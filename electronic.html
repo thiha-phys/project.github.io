@@ -17,6 +17,7 @@
   </header>
 
   <main class="app-shell">
+    <section class="supervisor-banner" aria-label="Project supervisor"><div class="supervisor-label">PROJECT SUPERVISOR</div><div><h2>U Lin</h2><p>Lecturer <span>·</span> Department of Physics, Mandalay University</p></div></section>
     <section class="electronic-hero">
       <div class="hero-copy">
         <p class="eyebrow"><span>04</span> ELECTRONIC · GROUP 2 PROJECT</p>
@@ -36,11 +37,11 @@
     <section class="control-grid" aria-label="ESP32 connection and fan controls">
       <article class="control-card connection-card">
         <div class="card-heading"><div><p class="eyebrow">DEVICE LINK</p><h2>ESP32 Wi-Fi Connection</h2></div><span class="wifi-icon" aria-hidden="true">⌁</span></div>
-        <p class="card-description">Connect your phone or computer to the same Wi-Fi network as the ESP32, then enter the device address.</p>
-        <label class="field-label" for="deviceAddress">ESP32 address <span>Example: http://192.168.1.50</span></label>
+        <p class="card-description">The ESP32 joins your room Wi-Fi at startup. Connect your phone or computer to that same network, then enter the ESP32 address shown in Arduino IDE Serial Monitor.</p>
+        <label class="field-label" for="deviceAddress">ESP32 address <span>Example: http://192.168.1.50 · leave blank when hosted on ESP32</span></label>
         <div class="connect-row"><input id="deviceAddress" type="url" inputmode="url" placeholder="http://192.168.1.50" autocomplete="url"><button class="primary-button" id="connectButton" type="button">Connect to ESP32 <span>↗</span></button></div>
         <div class="connection-status" id="connectionStatus" data-state="disconnected" role="status" aria-live="polite"><i></i><span id="connectionMessage">Not connected</span></div>
-        <p class="connection-help">For the first test, your device and this page need to be on the same local network. The ESP32 must provide the status and control API described below.</p>
+        <p class="connection-help">Best setup: open this page from the ESP32 web server at its local address. A GitHub Pages HTTPS page may be blocked from calling the ESP32's local HTTP API.</p>
       </article>
 
       <article class="control-card fan-controls" aria-labelledby="fan-controls-heading">
@@ -54,15 +55,15 @@
     </section>
 
     <section class="system-notes">
-      <div class="note-icon">i</div><div><h2>Local Wi-Fi Control</h2><p>Join the same Wi-Fi network as the ESP32, enter its local address, and connect. A successful connection unlocks the Auto and Manual controls. In Manual mode, use the speed slider or turn the fan fully off.</p></div>
+      <div class="note-icon">i</div><div><h2>Simple Connection Setup</h2><p>1. Put the room's 2.4 GHz Wi-Fi name and password in the ESP32 sketch. 2. Power on the board and read its local IP in Serial Monitor. 3. Keep the phone and ESP32 on the same Wi-Fi and open the web app from the ESP32 address. Press Connect to claim the controls. One user can control the fan at a time; other visitors see when it is in use.</p></div>
     </section>
 
     <details class="api-details">
       <summary>ESP32 firmware connection requirements</summary>
       <div class="api-content">
-        <p>This page expects the ESP32 to serve the following endpoints. Keep this page and the API on the same origin for the simplest setup.</p>
-        <ul><li><code>GET /api/status</code> returns JSON such as <code>{"temperature":28.6,"fanSpeed":62,"mode":"auto","fanOff":false}</code>.</li><li><code>GET /api/control?mode=auto</code> or <code>?mode=manual</code> changes the mode.</li><li><code>GET /api/control?speed=65</code> sets manual speed from 0 to 100.</li><li><code>GET /api/control?off=1</code> turns the fan off in Manual mode.</li><li>Each control endpoint returns a JSON acknowledgement such as <code>{"ok":true}</code>.</li></ul>
-        <p>To operate this control panel reliably, host the page on the ESP32 or on the same local origin. A GitHub Pages HTTPS page may be blocked by the browser when it tries to call an ESP32 HTTP address.</p>
+        <p>This page expects the ESP32 web server and API to be on the same origin. The device must enforce the single-controller lock; a page-only lock is not enough.</p>
+        <ul><li><code>GET /api/status</code> returns JSON such as <code>{"temperature":28.6,"fanSpeed":62,"mode":"auto","fanOff":false,"occupied":false,"controlGranted":false}</code>.</li><li><code>POST /api/connect</code> with <code>{"clientId":"…"}</code> claims control. Return a token on success, or HTTP 423 with <code>{"code":"in_use"}</code> if another user holds the lock.</li><li><code>POST /api/status</code> with <code>{"token":"…"}</code> returns status to the controlling client. <code>POST /api/heartbeat</code> and <code>POST /api/disconnect</code> also use the token. Renew the control lease every 6 seconds and expire it after about 20 seconds without a heartbeat.</li><li><code>POST /api/control</code> accepts <code>{"token":"…","mode":"manual"}</code>, <code>{"token":"…","mode":"auto"}</code>, <code>{"token":"…","speed":65}</code>, or <code>{"token":"…","off":true}</code>. Each returns JSON such as <code>{"ok":true}</code>.</li></ul>
+        <p>A GitHub Pages HTTPS page may be blocked from calling a local ESP32 HTTP API. For reliable control, open the copy served by the ESP32 at its local address.</p>
       </div>
     </details>
   </main>
