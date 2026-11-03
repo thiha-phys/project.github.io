@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251e">
+  <meta name="description" content="Group 2's ESP32 and LM35 automatic fan speed controller project at Mandalay University.">
+  <title>Automatic Fan Speed Controller | Mandalay University</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="subject.css">
+  <link rel="stylesheet" href="electronic.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="app-brand" href="index.html"><span class="app-seal">MU</span><span><strong>MANDALAY UNIVERSITY</strong><small>DEPARTMENT OF PHYSICS · GROUP 2</small></span></a>
+    <nav class="app-nav" aria-label="Main navigation"><a href="index.html">Home</a><a class="current" href="electronic.html">Electronic</a><a href="ENP.html">Experimental Nuclear Physics</a><a href="TNP.html">Theoretical Nuclear Physics</a><a href="CMP.html">Material</a></nav>
+  </header>
+
+  <main class="app-shell">
+    <section class="electronic-hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span>04</span> ELECTRONIC · GROUP 2 PROJECT</p>
+        <h1>Automatic Fan<br><em>Speed Controller</em></h1>
+        <p class="hero-description">An ESP32-based room temperature controller. The LM35 measures the temperature, and the 9V DC fan responds automatically or through manual control.</p>
+        <div class="component-tags"><span>ESP32</span><span>LM35</span><span>I²C LCD</span><span>9V DC FAN</span></div>
+      </div>
+      <div class="dashboard-card">
+        <div class="dashboard-top"><span>ROOM STATUS</span><span class="device-indicator"><i></i><b id="heroConnectionText">OFFLINE</b></span></div>
+        <div class="dashboard-reading"><div><small>Temperature</small><strong id="temperatureValue">--.-<sup>°C</sup></strong></div><div class="mini-fan" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M48 44C35 26 40 9 50 8c12-1 17 15 10 28-3 5-5 7-8 10h-4Zm9 9c18-13 35-8 35 3 0 12-16 18-28 10-5-3-7-5-10-8v-5Zm-14 5c13 18 8 35-3 35-12 0-18-16-10-28 3-5 5-7 8-10h5Zm-9-14C16 57-1 52 0 41c0-12 16-18 28-10 5 3 7 5 10 8v5Z"/><circle cx="50" cy="50" r="6"/></svg></div></div>
+        <div class="dashboard-bottom"><span>FAN OUTPUT</span><strong id="fanValue">--%</strong></div>
+        <div class="meter"><span id="fanMeter"></span></div>
+        <div class="dashboard-mode"><span>CONTROL MODE</span><strong id="heroModeText">—</strong></div>
+      </div>
+    </section>
+
+    <section class="control-grid" aria-label="ESP32 connection and fan controls">
+      <article class="control-card connection-card">
+        <div class="card-heading"><div><p class="eyebrow">DEVICE LINK</p><h2>ESP32 Wi-Fi Connection</h2></div><span class="wifi-icon" aria-hidden="true">⌁</span></div>
+        <p class="card-description">Connect your phone or computer to the same Wi-Fi network as the ESP32, then enter the device address.</p>
+        <label class="field-label" for="deviceAddress">ESP32 address <span>Example: http://192.168.1.50</span></label>
+        <div class="connect-row"><input id="deviceAddress" type="url" inputmode="url" placeholder="http://192.168.1.50" autocomplete="url"><button class="primary-button" id="connectButton" type="button">Connect to ESP32 <span>↗</span></button></div>
+        <div class="connection-status" id="connectionStatus" data-state="disconnected" role="status" aria-live="polite"><i></i><span id="connectionMessage">Not connected</span></div>
+        <p class="connection-help">For the first test, your device and this page need to be on the same local network. The ESP32 must provide the status and control API described below.</p>
+      </article>
+
+      <article class="control-card fan-controls" aria-labelledby="fan-controls-heading">
+        <div class="card-heading"><div><p class="eyebrow">FAN SETTINGS</p><h2 id="fan-controls-heading">Control Panel</h2></div><span class="lock-icon" id="lockIcon" aria-hidden="true">⌑</span></div>
+        <div class="mode-buttons" role="group" aria-label="Fan control mode"><button id="autoButton" type="button" aria-pressed="true" disabled>Auto</button><button id="manualButton" type="button" aria-pressed="false" disabled>Manual</button></div>
+        <div class="speed-row"><label for="speedSlider">Manual fan speed</label><strong id="speedLabel">0%</strong></div>
+        <input class="speed-slider" id="speedSlider" type="range" min="0" max="100" step="1" value="0" disabled>
+        <div class="range-labels"><span>0% · STOP</span><span>100% · MAX</span></div>
+        <div class="control-actions"><button class="off-button" id="fanOffButton" type="button" disabled>■ &nbsp; Fan Off</button><span id="manualHint">Connect to the ESP32 to enable controls.</span></div>
+      </article>
+    </section>
+
+    <section class="system-notes">
+      <div class="note-icon">i</div><div><h2>Local Wi-Fi Control</h2><p>Join the same Wi-Fi network as the ESP32, enter its local address, and connect. A successful connection unlocks the Auto and Manual controls. In Manual mode, use the speed slider or turn the fan fully off.</p></div>
+    </section>
+
+    <details class="api-details">
+      <summary>ESP32 firmware connection requirements</summary>
+      <div class="api-content">
+        <p>This page expects the ESP32 to serve the following endpoints. Keep this page and the API on the same origin for the simplest setup.</p>
+        <ul><li><code>GET /api/status</code> returns JSON such as <code>{"temperature":28.6,"fanSpeed":62,"mode":"auto","fanOff":false}</code>.</li><li><code>GET /api/control?mode=auto</code> or <code>?mode=manual</code> changes the mode.</li><li><code>GET /api/control?speed=65</code> sets manual speed from 0 to 100.</li><li><code>GET /api/control?off=1</code> turns the fan off in Manual mode.</li><li>Each control endpoint returns a JSON acknowledgement such as <code>{"ok":true}</code>.</li></ul>
+        <p>To operate this control panel reliably, host the page on the ESP32 or on the same local origin. A GitHub Pages HTTPS page may be blocked by the browser when it tries to call an ESP32 HTTP address.</p>
+      </div>
+    </details>
+  </main>
+
+  <footer class="app-footer"><a href="index.html">← Back to Group 2 home</a><span>MANDALAY UNIVERSITY · DEPARTMENT OF PHYSICS</span><span>ESP32 · LM35 · 9V DC FAN</span></footer>
+  <script src="electronic.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>

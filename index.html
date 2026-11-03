@@ -1,12 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Group Project</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251e">
+  <meta name="description" content="Mandalay University, Department of Physics, Group 2 project showcase.">
+  <title>Department of Physics | Mandalay University</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="welcome.css">
 </head>
 <body>
-    <h2 align="center">Dempartment of Physics</h2>
-    <h1 align="center">University of Mandalay</h1>
+  <header class="site-header">
+    <a class="identity" href="#welcome" aria-label="Mandalay University home">
+      <span class="seal" aria-hidden="true">UM</span>
+      <span class="identity-text"><strong>MANDALAY UNIVERSITY</strong><small>DEPARTMENT OF PHYSICS</small></span>
+    </a>
+    <a class="header-link" href="#subjects">Project Areas <span>↘</span></a>
+  </header>
+
+  <main>
+    <section class="hero" id="welcome" aria-labelledby="welcome-title">
+      <div class="hero-image" role="img" aria-label="Mandalay University campus"></div>
+      <div class="hero-shade"></div>
+      <div class="hero-content">
+        <div class="overline"><span></span> MANDALAY UNIVERSITY · PHYSICS</div>
+        <p class="welcome-label">Welcome to our project showcase</p>
+        <h1 id="welcome-title">Mandalay University</h1>
+        <div class="department">Department of <em>Physics</em></div>
+        <div class="hero-rule"></div>
+        <div class="group-stamp"><span class="stamp-icon">✳</span><span><small>STUDENT PROJECT</small><strong>GROUP 2</strong></span></div>
+        <a class="scroll-cue" href="#group"><span class="scroll-line"></span> MEET THE GROUP</a>
+      </div>
+      <div class="hero-index"><span>01</span><i></i> MANDALAY, MYANMAR</div>
+    </section>
+
+    <section class="group-section" id="group">
+      <div class="section-intro">
+        <p class="kicker">THE PEOPLE BEHIND THE PROJECT</p>
+        <h2>Group <span>2</span></h2>
+        <p class="intro-copy">Meet the students behind Group 2 and explore our physics project areas.</p>
+      </div>
+      <div class="members" aria-label="Group 2 members">
+        <!-- Replace the editable name labels below with the group's actual member names. -->
+        <article class="member"><span class="member-no">01</span><span class="member-avatar">T</span><div><small>PRE-PHD PHYSICS 04</small><h3>Mg Thiha Kyaw</h3><p>Group Member</p></div><span class="member-arrow">↗</span></article>
+        <article class="member"><span class="member-no">02</span><span class="member-avatar">N</span><div><small>PRE-PHD PHYSICS 05</small><h3>Ma Nge Nge Phyo</h3><p>Group Member</p></div><span class="member-arrow">↗</span></article>
+        <article class="member"><span class="member-no">03</span><span class="member-avatar">Z</span><div><small>PRE-PHD PHYSICS 10</small><h3>Ma Zar Zar Win</h3><p>Group Member</p></div><span class="member-arrow">↗</span></article>
+        <article class="member"><span class="member-no">04</span><span class="member-avatar">P</span><div><small>PRE-PHD PHYSICS 14</small><h3>Ma Phyoe Nandar Myint</h3><p>Group Member</p></div><span class="member-arrow">↗</span></article>
+        <article class="member"><span class="member-no">05</span><span class="member-avatar">S</span><div><small>PRE-PHD PHYSICS 18</small><h3>Ma Sandar Tun</h3><p>Group Member</p></div><span class="member-arrow">↗</span></article>
+        <article class="member"><span class="member-no">06</span><span class="member-avatar">L</span><div><small>PRE-PHD PHYSICS 19</small><h3>Ma Lu Lu San</h3><p>Group Member</p></div><span class="member-arrow">↗</span></article>
+      </div>
+    </section>
+
+    <section class="subjects-section" id="subjects">
+      <div class="subjects-heading"><div><p class="kicker">EXPLORE OUR WORK</p><h2>Project <span>Areas</span></h2></div><p class="subjects-note">Choose a subject area to explore Group 2's project work.</p></div>
+      <div class="subject-grid">
+        <a class="subject-card" href="CMP.html"><span class="subject-index">01 / PHYSICS</span><span class="subject-symbol">◈</span><strong>Material</strong><span class="subject-action">VIEW AREA <b>↗</b></span></a>
+        <a class="subject-card" href="TNP.html"><span class="subject-index">02 / PHYSICS</span><span class="subject-symbol">◎</span><strong>Theoretical Nuclear<br>Physics</strong><span class="subject-action">VIEW AREA <b>↗</b></span></a>
+        <a class="subject-card" href="ENP.html"><span class="subject-index">03 / PHYSICS</span><span class="subject-symbol">⌁</span><strong>Experimental Nuclear<br>Physics</strong><span class="subject-action">VIEW AREA <b>↗</b></span></a>
+        <a class="subject-card electronic" href="electronic.html"><span class="subject-index">04 / FEATURED PROJECT</span><span class="subject-symbol">ϟ</span><strong>Electronic</strong><span class="subject-subtitle">Automatic Fan Speed Controller</span><span class="subject-action">EXPLORE PROJECT <b>↗</b></span></a>
+      </div>
+    </section>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </main>
+
+  <footer class="site-footer"><div class="footer-brand"><span class="seal small-seal">MU</span><span>MANDALAY UNIVERSITY <i>·</i> DEPARTMENT OF PHYSICS</span></div><span>GROUP 2 <i>·</i> STUDENT PROJECTS</span><a href="#welcome">BACK TO TOP ↑</a></footer>
+  <script src="welcome.js"></script>
+  <script src="pwa.js"></script>
 </body>
 </html>
