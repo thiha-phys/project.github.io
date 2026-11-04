@@ -1,4 +1,3 @@
-const addressInput = document.getElementById('deviceAddress');
 const connectButton = document.getElementById('connectButton');
 const connectionStatus = document.getElementById('connectionStatus');
 const connectionMessage = document.getElementById('connectionMessage');
@@ -14,6 +13,7 @@ const speedSlider = document.getElementById('speedSlider');
 const speedLabel = document.getElementById('speedLabel');
 const fanOffButton = document.getElementById('fanOffButton');
 const manualHint = document.getElementById('manualHint');
+const servedByEsp32 = window.location.hostname === '192.168.4.1';
 
 const TOKEN_KEY = 'group2FanControlToken';
 const CLIENT_KEY = 'group2FanClientId';
@@ -23,14 +23,10 @@ let connectionState = 'disconnected';
 let statusTimer = null;
 let heartbeatTimer = null;
 let availabilityTimer = null;
-let addressTimer = null;
 let controlToken = sessionStorage.getItem(TOKEN_KEY) || '';
 
 function getDeviceBase() {
-  let value = addressInput.value.trim();
-  if (!value) value = window.location.origin;
-  if (!/^https?:\/\//i.test(value)) value = `http://${value}`;
-  return value.replace(/\/$/, '');
+  return window.location.origin;
 }
 
 function setConnectionState(state, message) {
@@ -39,18 +35,18 @@ function setConnectionState(state, message) {
   connectionMessage.textContent = message;
   dashboard.dataset.state = state;
   heroConnectionText.textContent = state === 'connected' ? 'CONNECTED' : state === 'connecting' ? 'CONNECTING' : state === 'occupied' ? 'IN USE' : state === 'available' ? 'AVAILABLE' : state === 'error' ? 'ERROR' : 'OFFLINE';
-  connectButton.disabled = state === 'checking' || state === 'connecting' || state === 'occupied';
+  connectButton.disabled = state === 'checking' || state === 'connecting' || state === 'occupied' || (!servedByEsp32 && state !== 'connected');
   if (state === 'connected') {
     connectButton.disabled = false;
-    connectButton.textContent = 'Disconnect';
+    connectButton.textContent = 'Release control';
   } else if (state === 'occupied') {
     connectButton.textContent = 'In use';
   } else if (state === 'checking') {
     connectButton.textContent = 'Checking…';
   } else if (state === 'connecting') {
-    connectButton.textContent = 'Connecting…';
+    connectButton.textContent = 'Claiming controls…';
   } else {
-    connectButton.innerHTML = 'Connect to ESP32 <span>↗</span>';
+    connectButton.textContent = servedByEsp32 ? 'Claim fan controls' : 'ESP32 setup required';
   }
 }
 
@@ -146,8 +142,8 @@ function markError(error) {
   sessionStorage.removeItem(TOKEN_KEY);
   clearTimers();
   setConnectionState('error', error?.name === 'AbortError'
-    ? 'Request timed out. Check the ESP32 address and Wi-Fi connection.'
-    : 'Could not reach the ESP32 API. Check Wi-Fi, address, and browser access.');
+    ? 'Request timed out. Check the ESP32 hotspot and firmware.'
+    : 'The ESP32 page loaded, but its control API is not responding. Finish the ESP32 firmware setup.');
   updateControlAvailability();
 }
 
@@ -199,7 +195,7 @@ async function checkAvailability() {
   } catch (error) {
     if (error?.code === 'in_use') markOccupied();
     else {
-      setConnectionState('error', 'ESP32 not found here. Enter its address or open this page from the device.');
+      setConnectionState('error', 'ESP32 not found. Join its hotspot and open this page at http://192.168.4.1/.');
       updateControlAvailability();
       if (!availabilityTimer) availabilityTimer = window.setInterval(checkAvailability, 6000);
     }
@@ -207,6 +203,11 @@ async function checkAvailability() {
 }
 
 async function connectToDevice() {
+  if (!servedByEsp32) {
+    setConnectionState('error', 'Preview only. Join FanController and open http://192.168.4.1/ after the ESP32 is programmed.');
+    updateControlAvailability();
+    return;
+  }
   if (connected) {
     const token = controlToken;
     try { await apiRequest('/api/disconnect', { method: 'POST', body: { token } }); } catch (_) { /* The device lease will expire if it is already unreachable. */ }
@@ -275,15 +276,6 @@ fanOffButton.addEventListener('click', async () => {
   } catch (error) { markError(error); }
 });
 
-addressInput.addEventListener('change', () => {
-  if (connected) return;
-  window.clearTimeout(addressTimer);
-  addressTimer = window.setTimeout(() => {
-    clearTimers();
-    checkAvailability();
-  }, 250);
-});
-
 window.addEventListener('pagehide', () => {
   if (!connected || !controlToken || !navigator.sendBeacon) return;
   const body = new Blob([JSON.stringify({ token: controlToken })], { type: 'application/json' });
@@ -291,4 +283,9 @@ window.addEventListener('pagehide', () => {
 });
 
 updateControlAvailability();
-checkAvailability();
+if (servedByEsp32) {
+  checkAvailability();
+} else {
+  setConnectionState('error', 'Preview only. This page is not being served by an ESP32 yet.');
+  updateControlAvailability();
+}

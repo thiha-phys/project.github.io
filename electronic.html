@@ -36,12 +36,16 @@
 
     <section class="control-grid" aria-label="ESP32 connection and fan controls">
       <article class="control-card connection-card">
-        <div class="card-heading"><div><p class="eyebrow">DEVICE LINK</p><h2>ESP32 Wi-Fi Connection</h2></div><span class="wifi-icon" aria-hidden="true">⌁</span></div>
-        <p class="card-description">The ESP32 joins your room Wi-Fi at startup. Connect your phone or computer to that same network, then enter the ESP32 address shown in Arduino IDE Serial Monitor.</p>
-        <label class="field-label" for="deviceAddress">ESP32 address <span>Example: http://192.168.1.50 · leave blank when hosted on ESP32</span></label>
-        <div class="connect-row"><input id="deviceAddress" type="url" inputmode="url" placeholder="http://192.168.1.50" autocomplete="url"><button class="primary-button" id="connectButton" type="button">Connect to ESP32 <span>↗</span></button></div>
+        <div class="card-heading"><div><p class="eyebrow">DEVICE LINK</p><h2>ESP32 Hotspot Connection</h2></div><span class="wifi-icon" aria-hidden="true">⌁</span></div>
+        <p class="card-description">The phone joins the ESP32's Wi-Fi first. The button below only claims fan-control access; it does not change your phone's Wi-Fi connection.</p>
+        <div class="wifi-steps">
+          <div class="wifi-step"><b>1</b><div><strong>Join the ESP32 Wi-Fi</strong><small>In phone Settings → Wi-Fi, choose <b>FanController</b>. Use the password set in the ESP32 sketch.</small></div></div>
+          <div class="wifi-step"><b>2</b><div><strong>Open the local web page</strong><small>In your browser's address bar, open this address:</small><code>http://192.168.4.1/</code><small>This is a web address, not an API key. It will work after the ESP32 is programmed to host this page.</small></div></div>
+          <div class="wifi-step"><b>3</b><div><strong>Claim fan controls</strong><small>Press the button on this page. The Control Panel further down on this same page will unlock. Do not go back or open another site; scroll down to use it. Only one phone can control the fan at a time.</small></div></div>
+        </div>
+        <div class="connect-row"><button class="primary-button" id="connectButton" type="button">Claim fan controls <span>↗</span></button></div>
         <div class="connection-status" id="connectionStatus" data-state="disconnected" role="status" aria-live="polite"><i></i><span id="connectionMessage">Not connected</span></div>
-        <p class="connection-help">Best setup: open this page from the ESP32 web server at its local address. A GitHub Pages HTTPS page may be blocked from calling the ESP32's local HTTP API.</p>
+        <p class="connection-help">The ESP32 must be programmed to create the hotspot, serve this page, and provide the control API. GitHub hosting is not needed for local fan control.</p>
       </article>
 
       <article class="control-card fan-controls" aria-labelledby="fan-controls-heading">
@@ -55,7 +59,7 @@
     </section>
 
     <section class="system-notes">
-      <div class="note-icon">i</div><div><h2>Simple Connection Setup</h2><p>1. Put the room's 2.4 GHz Wi-Fi name and password in the ESP32 sketch. 2. Power on the board and read its local IP in Serial Monitor. 3. Keep the phone and ESP32 on the same Wi-Fi and open the web app from the ESP32 address. Press Connect to claim the controls. One user can control the fan at a time; other visitors see when it is in use.</p></div>
+      <div class="note-icon">i</div><div><h2>Simple Connection Setup</h2><p>1. Power on the programmed ESP32. 2. Connect the phone to its FanController Wi-Fi hotspot. 3. Open <code>http://192.168.4.1/</code> in the browser. Press Claim fan controls to reserve access. One user can control the fan at a time; other visitors see when it is in use.</p></div>
     </section>
 
     <details class="api-details">
@@ -63,7 +67,7 @@
       <div class="api-content">
         <p>This page expects the ESP32 web server and API to be on the same origin. The device must enforce the single-controller lock; a page-only lock is not enough.</p>
         <ul><li><code>GET /api/status</code> returns JSON such as <code>{"temperature":28.6,"fanSpeed":62,"mode":"auto","fanOff":false,"occupied":false,"controlGranted":false}</code>.</li><li><code>POST /api/connect</code> with <code>{"clientId":"…"}</code> claims control. Return a token on success, or HTTP 423 with <code>{"code":"in_use"}</code> if another user holds the lock.</li><li><code>POST /api/status</code> with <code>{"token":"…"}</code> returns status to the controlling client. <code>POST /api/heartbeat</code> and <code>POST /api/disconnect</code> also use the token. Renew the control lease every 6 seconds and expire it after about 20 seconds without a heartbeat.</li><li><code>POST /api/control</code> accepts <code>{"token":"…","mode":"manual"}</code>, <code>{"token":"…","mode":"auto"}</code>, <code>{"token":"…","speed":65}</code>, or <code>{"token":"…","off":true}</code>. Each returns JSON such as <code>{"ok":true}</code>.</li></ul>
-        <p>A GitHub Pages HTTPS page may be blocked from calling a local ESP32 HTTP API. For reliable control, open the copy served by the ESP32 at its local address.</p>
+        <p>For reliable control, open the page served by the ESP32 at <code>http://192.168.4.1/</code>. GitHub hosting is not needed for local fan control.</p>
       </div>
     </details>
   </main>
