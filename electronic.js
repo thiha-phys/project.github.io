@@ -30,6 +30,9 @@ function getDeviceBase() {
 }
 
 function setConnectionState(state, message) {
+  const connectRow = document.querySelector('.connect-row');
+  if (connectRow) connectRow.hidden = !servedByEsp32;
+  connectButton.hidden = !servedByEsp32;
   connectionState = state;
   connectionStatus.dataset.state = state;
   connectionMessage.textContent = message;
@@ -286,6 +289,6 @@ updateControlAvailability();
 if (servedByEsp32) {
   checkAvailability();
 } else {
-  setConnectionState('error', 'Preview only. This page is not being served by an ESP32 yet.');
+  setConnectionState('error', 'Preview only. Join FanController Wi-Fi, then tap Open ESP32 control page above for live controls.');
   updateControlAvailability();
 }

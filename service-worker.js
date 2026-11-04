@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mandalay-physics-group-2-v1';
+const CACHE_NAME = 'mandalay-physics-group-2-v6';
 const APP_FILES = [
   './',
   './index.html',
@@ -14,7 +14,8 @@ const APP_FILES = [
   './electronic.js',
   './manifest.webmanifest',
   './assets/mandalay-campus.jpg',
-  './assets/app-icon.svg'
+  './logo.png',
+  './unilogo.png'
 ];
 
 self.addEventListener('install', (event) => {

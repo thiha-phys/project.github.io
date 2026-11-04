@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#10251e">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
   <meta name="description" content="Group 2's ESP32 and LM35 automatic fan speed controller project at Mandalay University.">
   <title>Automatic Fan Speed Controller | Mandalay University</title>
   <link rel="manifest" href="manifest.webmanifest">
@@ -12,7 +14,7 @@
 </head>
 <body>
   <header class="app-header">
-    <a class="app-brand" href="index.html"><span class="app-seal">MU</span><span><strong>MANDALAY UNIVERSITY</strong><small>DEPARTMENT OF PHYSICS · GROUP 2</small></span></a>
+    <a class="app-brand" href="index.html"><span class="app-seal"><img src="logo.png" alt=""></span><span><strong>MANDALAY UNIVERSITY</strong><small>DEPARTMENT OF PHYSICS · GROUP 2</small></span></a>
     <nav class="app-nav" aria-label="Main navigation"><a href="index.html">Home</a><a class="current" href="electronic.html">Electronic</a><a href="ENP.html">Experimental Nuclear Physics</a><a href="TNP.html">Theoretical Nuclear Physics</a><a href="CMP.html">Material</a></nav>
   </header>
 
@@ -39,13 +41,13 @@
         <div class="card-heading"><div><p class="eyebrow">DEVICE LINK</p><h2>ESP32 Hotspot Connection</h2></div><span class="wifi-icon" aria-hidden="true">⌁</span></div>
         <p class="card-description">The phone joins the ESP32's Wi-Fi first. The button below only claims fan-control access; it does not change your phone's Wi-Fi connection.</p>
         <div class="wifi-steps">
-          <div class="wifi-step"><b>1</b><div><strong>Join the ESP32 Wi-Fi</strong><small>In phone Settings → Wi-Fi, choose <b>FanController</b>. Use the password set in the ESP32 sketch.</small></div></div>
-          <div class="wifi-step"><b>2</b><div><strong>Open the local web page</strong><small>In your browser's address bar, open this address:</small><code>http://192.168.4.1/</code><small>This is a web address, not an API key. It will work after the ESP32 is programmed to host this page.</small></div></div>
-          <div class="wifi-step"><b>3</b><div><strong>Claim fan controls</strong><small>Press the button on this page. The Control Panel further down on this same page will unlock. Do not go back or open another site; scroll down to use it. Only one phone can control the fan at a time.</small></div></div>
+          <div class="wifi-step"><b>1</b><div><strong>Join the ESP32 Wi-Fi</strong><small>In phone Settings → Wi-Fi, choose <b>FanController</b> (password: <b>mdyphysgp2</b>).</small></div></div>
+          <div class="wifi-step"><b>2</b><div><strong>Open the local web page</strong><small>After joining FanController Wi-Fi, tap this button to open the ESP32 control page:</small><a class="open-device-button" href="http://192.168.4.1/">Open ESP32 control page <span aria-hidden="true">↗</span></a><small>If the page does not open, check that your phone is still connected to FanController Wi-Fi.</small></div></div>
+          <div class="wifi-step"><b>3</b><div><strong>Claim fan controls</strong><small>On the ESP32 page that opens, press <b>Claim fan controls</b>. Then use Auto or Manual on that page. Only one phone can control the fan at a time.</small></div></div>
         </div>
         <div class="connect-row"><button class="primary-button" id="connectButton" type="button">Claim fan controls <span>↗</span></button></div>
         <div class="connection-status" id="connectionStatus" data-state="disconnected" role="status" aria-live="polite"><i></i><span id="connectionMessage">Not connected</span></div>
-        <p class="connection-help">The ESP32 must be programmed to create the hotspot, serve this page, and provide the control API. GitHub hosting is not needed for local fan control.</p>
+        <p class="connection-help">Join FanController Wi-Fi before opening the device page. The ESP32 hosts the live fan controls locally; no API key or internet is needed.</p>
       </article>
 
       <article class="control-card fan-controls" aria-labelledby="fan-controls-heading">
@@ -59,7 +61,7 @@
     </section>
 
     <section class="system-notes">
-      <div class="note-icon">i</div><div><h2>Simple Connection Setup</h2><p>1. Power on the programmed ESP32. 2. Connect the phone to its FanController Wi-Fi hotspot. 3. Open <code>http://192.168.4.1/</code> in the browser. Press Claim fan controls to reserve access. One user can control the fan at a time; other visitors see when it is in use.</p></div>
+      <div class="note-icon">i</div><div><h2>Simple Connection Setup</h2><p>Power on the ESP32, connect your phone to FanController Wi-Fi, and tap <b>Open ESP32 control page</b> above. Press Claim fan controls on the page that opens. One user can control the fan at a time.</p></div>
     </section>
 
     <details class="api-details">

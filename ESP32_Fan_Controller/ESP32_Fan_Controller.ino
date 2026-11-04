@@ -2,7 +2,7 @@
   Automatic Fan Speed Controller — ESP32
 
   Adapted from the 2020 Arduino/Nokia 5110 sketch for:
-    - ESP32 Arduino core
+    - ESP32-C3 Super Mini (ESP32C3 Dev Module in Arduino IDE)
     - LM35 temperature sensor
     - 16x2 I2C LCD
     - NPN transistor fan driver (no MOSFET)
@@ -10,12 +10,12 @@
 
   Before uploading:
     1. Install the "LiquidCrystal I2C" library by Frank de Brabander.
-    2. Select your ESP32 board (usually "ESP32 Dev Module") in Arduino IDE.
+    2. Select "ESP32C3 Dev Module" in Arduino IDE.
     3. Change the Wi-Fi password below if desired (8 characters minimum).
     4. Confirm the pin assignments for your exact ESP32 board.
 
-  Safety: GPIO25 is a 3.3 V logic signal for a transistor base resistor only.
-  Do not connect the fan directly to an ESP32 GPIO. Fan supply ground and
+  Safety: GPIO10 is a 3.3 V logic signal for a transistor base resistor only.
+  Do not connect the fan directly to an ESP32-C3 GPIO. Fan supply ground and
   ESP32 ground must be common. Verify fan current and transistor ratings before
   powering the fan; many C828/2SC828 parts are rated for only 50 mA continuous.
 */
@@ -26,16 +26,16 @@
 #include <LiquidCrystal_I2C.h>
 
 // ---------- User-adjustable hardware settings ----------
-constexpr uint8_t LM35_PIN = 34;       // ADC1 input-only pin on common ESP32 DevKit
-constexpr uint8_t FAN_PWM_PIN = 25;     // Through a base resistor to NPN transistor
-constexpr uint8_t I2C_SDA_PIN = 21;
-constexpr uint8_t I2C_SCL_PIN = 22;
+constexpr uint8_t LM35_PIN = 3;         // Board label 3 / GPIO3 / ADC1
+constexpr uint8_t FAN_PWM_PIN = 10;     // Board label 10 / GPIO10, to NPN base resistor
+constexpr uint8_t I2C_SDA_PIN = 0;      // Board label 0 / GPIO0
+constexpr uint8_t I2C_SCL_PIN = 1;      // Board label 1 / GPIO1
 constexpr uint8_t LCD_I2C_ADDRESS = 0x27; // Common alternatives: 0x3F
 constexpr uint8_t LCD_COLUMNS = 16;
 constexpr uint8_t LCD_ROWS = 2;
 
 const char *AP_SSID = "FanController";
-const char *AP_PASSWORD = "FanGroup2"; // At least 8 characters
+const char *AP_PASSWORD = "mdyphysgp2"; // At least 8 characters
 
 constexpr float MIN_TEMP_C = 20.0f;
 constexpr float MAX_TEMP_C = 35.0f;
@@ -72,7 +72,7 @@ main{max-width:820px;margin:auto;padding:22px}.card{background:#fffefa;border:1p
 .readings{display:grid;grid-template-columns:1fr 1fr;gap:12px}.reading{background:#f2f4ed;border-radius:18px;padding:18px}.label{font-size:.78rem;font-weight:750;letter-spacing:.08em;color:var(--muted)}.big{display:block;font-size:clamp(2.1rem,9vw,3.5rem);font-weight:750;line-height:1.2;margin-top:5px}
 .bar{height:12px;background:#edf0e8;border-radius:20px;overflow:hidden;margin-top:12px}.bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,#9bba87,#193b2f);transition:width .25s}
 .status{padding:13px 15px;background:#f2f4ed;border-radius:13px;color:#4c6255;margin:16px 0}.status.error{background:#fff0eb;color:#b33d29}.status.ok{background:#eaf4e9;color:#315b3e}
-button{font:inherit;font-weight:750;border:0;border-radius:12px;padding:14px 18px;cursor:pointer;background:var(--green);color:white}button:disabled{opacity:.48;cursor:not-allowed}.wide{width:100%}.modes{display:grid;grid-template-columns:1fr 1fr;background:#eff1eb;border-radius:14px;padding:5px;margin:12px 0}.modes button{background:transparent;color:var(--muted)}.modes button.active{background:#75827b;color:#fff}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 4px}.slider{width:100%;accent-color:var(--green)}.off{background:#fff2ed;border:1px solid #efcfc4;color:#a34432}.instructions{padding-left:1.3rem;color:var(--muted)}code{background:#f0f2eb;padding:3px 7px;border-radius:5px}
+button{font:inherit;font-weight:750;border:0;border-radius:12px;padding:14px 18px;cursor:pointer;background:var(--green);color:white}button:disabled{opacity:.48;cursor:not-allowed}.wide{width:100%}.modes{display:grid;grid-template-columns:1fr 1fr;background:#eff1eb;border-radius:14px;padding:5px;margin:12px 0}.modes button{background:#e2e8de;color:#314d3d;transition:background .18s,color .18s,box-shadow .18s}.modes button:hover:not(:disabled){background:#d5dfd1;color:#183b2d}.modes button.active{background:#173b2e;color:#fff;box-shadow:0 3px 9px #0b1b1630}.modes button:disabled{opacity:.82;color:#5b6c60}.modes button.active:disabled{background:#496757;color:#fff}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 4px}.slider{width:100%;accent-color:var(--green)}.off{background:#fff2ed;border:1px solid #efcfc4;color:#a34432}.instructions{padding-left:1.3rem;color:var(--muted)}code{background:#f0f2eb;padding:3px 7px;border-radius:5px}
 @media(max-width:480px){main{padding:12px}.card{border-radius:18px;padding:22px 18px}.readings{gap:8px}.reading{padding:13px}}
 </style></head><body><main>
 <section class="card"><p class="eyebrow">MANDALAY UNIVERSITY · DEPARTMENT OF PHYSICS</p><h1>Automatic Fan<br>Speed Controller</h1><p class="muted">ESP32 · LM35 · 9V DC fan</p>
@@ -80,7 +80,7 @@ button{font:inherit;font-weight:750;border:0;border-radius:12px;padding:14px 18p
 <p class="status" id="status">Device ready. Claim the controls to begin.</p><button class="wide" id="claim">Claim fan controls</button></section>
 <section class="card"><p class="eyebrow">FAN SETTINGS</p><h2>Control Panel</h2><div class="modes"><button id="auto" class="active" disabled>Auto</button><button id="manual" disabled>Manual</button></div>
 <div class="row"><label for="slider">Manual fan speed</label><strong id="speedLabel">0%</strong></div><input class="slider" id="slider" type="range" min="0" max="100" value="0" disabled><div class="row muted"><small>0% · STOP</small><small>100% · MAX</small></div><button class="off" id="off" disabled>■ &nbsp; Fan Off</button></section>
-<section class="card"><p class="eyebrow">HOW TO CONNECT</p><ol class="instructions"><li>In phone Wi-Fi settings, join <b>FanController</b> (password: <b>FanGroup2</b>).</li><li>Stay on that Wi-Fi, open your browser and visit <code>http://192.168.4.1/</code>.</li><li>Press <b>Claim fan controls</b>. Use Auto or Manual on this same page.</li></ol><p class="muted">This page is hosted by the ESP32. No internet connection, GitHub page, or API key is required for local fan control.</p></section>
+<section class="card"><p class="eyebrow">HOW TO CONNECT</p><ol class="instructions"><li>In phone Wi-Fi settings, join <b>FanController</b> (password: <b>mdyphysgp2</b>).</li><li>Stay on that Wi-Fi, open your browser and visit <code>http://192.168.4.1/</code>.</li><li>Press <b>Claim fan controls</b>. Use Auto or Manual on this same page.</li></ol><p class="muted">This page is hosted by the ESP32. No internet connection, GitHub page, or API key is required for local fan control.</p></section>
 </main><script>
 let token=sessionStorage.getItem('fanToken')||'',clientId=sessionStorage.getItem('fanClient')||('client-'+Math.random().toString(16).slice(2));sessionStorage.setItem('fanClient',clientId);let connected=false,mode='auto';
 const $=id=>document.getElementById(id),status=(text,kind='')=>{$('status').textContent=text;$('status').className='status '+kind};
