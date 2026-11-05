@@ -10,6 +10,15 @@
   <title>Department of Physics | Mandalay University</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="welcome.css">
+  <style>
+    .physics-page-link{position:absolute;z-index:3;right:clamp(22px,5.5vw,82px);bottom:clamp(22px,4vh,42px);display:flex;flex-direction:column;gap:4px;min-width:205px;padding:13px 17px;border:1px solid rgba(234,215,173,.72);border-radius:9px;background:rgba(11,27,22,.76);color:#fff;text-decoration:none;backdrop-filter:blur(8px);transition:background .2s,border-color .2s,transform .2s}
+    .physics-page-link:hover,.physics-page-link:focus-visible{background:#d0b477;border-color:#ead7ad;color:#10251e;transform:translateY(-2px);outline:none}
+    .physics-page-link .link-label{font-size:7px;font-weight:700;letter-spacing:.16em;color:#ead7ad}
+    .physics-page-link:hover .link-label,.physics-page-link:focus-visible .link-label{color:#10251e}
+    .physics-page-link .link-title{display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:"Playfair Display",Georgia,serif;font-size:16px}
+    .physics-page-link .link-title b{font-family:"DM Sans",sans-serif;font-size:18px;font-weight:500}
+    @media(max-width:580px){.physics-page-link{right:18px;bottom:18px;min-width:0;padding:10px 12px}.physics-page-link .link-label{font-size:6px}.physics-page-link .link-title{font-size:13px}}
+  </style>
 </head>
 <body>
   <header class="site-header">
@@ -37,7 +46,10 @@
         <div class="group-stamp"><span class="stamp-icon">✳</span><span><small>STUDENT PROJECT</small><strong>GROUP 2</strong></span></div>
         <a class="scroll-cue" href="#group"><span class="scroll-line"></span> MEET THE GROUP</a>
       </div>
-      <div class="hero-index"><span>01</span><i></i> MANDALAY, MYANMAR</div>
+      <a class="physics-page-link" href="https://www.mu.edu.mm/departments/physics/" target="_blank" rel="noopener noreferrer" aria-label="Open the Mandalay University Department of Physics website">
+        <span class="link-label">OFFICIAL DEPARTMENT WEBSITE</span>
+        <span class="link-title">Explore Physics <b aria-hidden="true">↗</b></span>
+      </a>
     </section>
 
     <section class="group-section" id="group">
