@@ -1,10 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#10251e">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251e">
+  <meta name="description" content="Group 2's computational study of core-surface interaction potential in nuclear isotopes and isotones.">
   <link rel="icon" type="image/png" href="logo.png">
-  <link rel="apple-touch-icon" href="logo.png"><meta name="description" content="Theoretical Nuclear Physics project area by Group 2 at Mandalay University."><title>Theoretical Nuclear Physics | Mandalay University</title><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="subject.css"><link rel="stylesheet" href="category.css"></head>
+  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="subject.css">
+  <link rel="stylesheet" href="tnp.css">
+  <title>A Computational Study of Core-Surface Interaction Potential | Mandalay University</title>
+</head>
 <body>
-  <header class="app-header"><a class="app-brand" href="index.html"><span class="app-seal"><img src="logo.png" alt=""></span><span><strong>MANDALAY UNIVERSITY</strong><small>DEPARTMENT OF PHYSICS · GROUP 2</small></span></a><nav class="app-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="electronic.html">Electronic</a><a href="ENP.html">Experimental Nuclear Physics</a><a class="current" href="TNP.html">Theoretical Nuclear Physics</a><a href="CMP.html">Material</a></nav></header>
-  <main class="category-shell"><section class="supervisor-banner" aria-label="Project supervisor"><div class="supervisor-label">PROJECT SUPERVISOR</div><div><h2>Dr Tin Ma Ma Khaing</h2><p>Associate Professor <span>·</span> Department of Physics, Mandalay University</p></div></section><section class="category-hero"><p class="eyebrow"><span>02</span> PHYSICS PROJECT AREA</p><h1>Theoretical Nuclear<br><em>Physics</em></h1><p class="category-lead">A theory-focused view of nuclear structure, interactions, and the models used to describe them.</p><div class="category-stamp"><span>GROUP 2</span><i></i><span>DEPARTMENT OF PHYSICS</span></div></section><section class="category-content"><div class="category-card"><span class="category-icon">◎</span><p class="eyebrow">PROJECT NOTES</p><h2>Project details are being prepared.</h2><p>This section is ready for Group 2's Theoretical Nuclear Physics project question, model, calculations, and conclusions.</p></div><div class="category-aside"><p class="eyebrow">AREA OVERVIEW</p><h2>Models that explain the nucleus</h2><p>Theoretical nuclear physics uses mathematical frameworks to investigate nuclear properties and predict how nuclei behave under different conditions.</p><a class="text-link" href="index.html#subjects">Explore all project areas <span>↗</span></a></div></section></main>
-  <footer class="app-footer"><a href="index.html">← Back to Group 2 home</a><span>MANDALAY UNIVERSITY · DEPARTMENT OF PHYSICS</span><a href="electronic.html">Electronic project →</a></footer>
-<script src="pwa.js"></script></body></html>
+  <header class="app-header">
+    <a class="app-brand" href="index.html"><span class="app-seal"><img src="logo.png" alt=""></span><span><strong>MANDALAY UNIVERSITY</strong><small>DEPARTMENT OF PHYSICS · GROUP 2</small></span></a>
+    <nav class="app-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="electronic.html">Electronics</a><a href="ENP.html">ENP</a><a class="current" href="TNP.html">TNP</a><a href="CMP.html">Material</a></nav>
+  </header>
+
+  <main class="tnp-shell">
+    <section class="supervisor-banner" aria-label="Project supervisor">
+      <div class="supervisor-label">PROJECT SUPERVISOR</div>
+      <div><h2>Dr Tin Ma Ma Khaing</h2><p>Associate Professor <span>·</span> Department of Physics, Mandalay University</p></div>
+    </section>
+
+    <section class="tnp-hero" id="top">
+      <p class="eyebrow"><span>2026–2027</span> PhD PRELIMINARY PROJECT · THEORETICAL NUCLEAR PHYSICS LABORATORY</p>
+      <p class="hero-group">GROUP 2 <i></i> PROJECT STUDY</p>
+      <h1>A Computational Study of <em>Core–Surface Interaction Potential</em> in Nuclear Isotopes and Isotones</h1>
+      <p class="tnp-lead">A study of how the core–surface interaction potential <span class="math">V<sub>0</sub></span> varies across nuclear systems, using experimental binding-energy data and a modified nuclear model.</p>
+      <a class="contents-link" href="#project-objectives">Explore the project <span>↓</span></a>
+    </section>
+
+    <section class="objectives" id="project-objectives">
+      <div><p class="section-label">01 · PROJECT OBJECTIVES</p><h2>What the study investigates</h2></div>
+      <ol><li>Investigate the core–surface interaction potential <span class="math">V<sub>0</sub></span> in selected nuclear isotopes and isotones using experimental binding-energy data and the modified nuclear model.</li><li>Compare the observed trends in <span class="math">V<sub>0</sub></span> among light, medium, and heavy nuclei within the framework of the modified nuclear model.</li></ol>
+    </section>
+
+    <nav class="contents" aria-label="Project sections"><a href="#introduction">Introduction</a><a href="#semf">Nuclear models &amp; SEMF</a><a href="#modified-model">Modified core–surface model</a><a href="#results">Results &amp; discussion</a><a href="#conclusion">Conclusion</a><a href="#references">References</a></nav>
+
+    <section class="article-section" id="introduction">
+      <div class="section-heading"><p class="section-label">02 · INTRODUCTION</p><h2>Nuclear binding energy</h2></div>
+      <div class="prose"><p>Nuclear binding energy is a fundamental property of atomic nuclei that provides important information about nuclear stability and the interaction between protons and neutrons.</p><p>Understanding the variation of binding energy with proton number (<span class="math">Z</span>), neutron number (<span class="math">N</span>), and mass number (<span class="math">A</span>) is therefore an important subject in nuclear physics.</p><p>Several nuclear models have been developed to explain nuclear binding energy, including the Liquid Drop Model, represented by the semi-empirical mass formula (SEMF), and the Nuclear Shell Model.</p></div>
+    </section>
+
+    <section class="article-section model-section" id="semf">
+      <div class="section-heading"><p class="section-label">03 · NUCLEAR MODELS</p><h2>Semi-Empirical Mass Formula</h2></div>
+      <div class="prose"><p>The semi-empirical mass formula (SEMF), also known as the Bethe–Weizsäcker formula, is a mathematical expression used in nuclear physics to approximate the mass and total binding energy of an atomic nucleus.</p></div>
+      <div class="equation-block"><span class="equation-label">Binding energy</span><div class="equation"><i>BE</i>(A, Z) = a<sub>v</sub>A − a<sub>s</sub>A<sup>2/3</sup> − a<sub>c</sub>Z(Z − 1)A<sup>−1/3</sup> − a<sub>A</sub>(A − 2Z)<sup>2</sup>/A ± Δ</div><p>SEMF coefficient values shown in the presentation:</p><div class="coefficients"><span><b>a<sub>v</sub></b> 15.56 MeV</span><span><b>a<sub>s</sub></b> 17.23 MeV</span><span><b>a<sub>c</sub></b> 0.72 MeV</span><span><b>a<sub>A</sub></b> 23.28 MeV</span><span><b>a<sub>p</sub></b> 12 MeV</span></div><small>Values are transcribed from the supplied presentation.</small></div>
+    </section>
+
+    <section class="article-section core-section" id="core-surface">
+      <div class="section-heading"><p class="section-label">04 · MODIFIED NUCLEAR MODEL</p><h2>Inner core and outer surface</h2></div>
+      <div class="two-column"><div class="prose"><p>The model separates a nucleus into two regions to investigate the structural distinction between the inner core and the outer surface region.</p><h3>Inner core region</h3><p>The inner core is composed of symmetric proton–neutron pairs: <span class="math">Z</span> protons and <span class="math">Z</span> neutrons, so <span class="math">N<sub>core</sub> = Z</span>. The core contains <span class="math">2Z</span> nucleons.</p><h3>Outer surface region</h3><p>When <span class="math">N &gt; Z</span>, the remaining <span class="math">N − Z</span> excess neutrons form a surface (skin) region. The mass number is <span class="math">A = 2Z + (N − Z) = Z + N</span>.</p></div><aside class="definition"><span class="definition-mark">V<sub>0</sub></span><h3>Core–surface interaction potential</h3><p>Unpaired surface neutrons are assumed to move in a core–surface interaction potential generated by the inner core.</p></aside></div>
+    </section>
+
+    <section class="article-section modified-section" id="modified-model">
+      <div class="section-heading"><p class="section-label">05 · MODEL EQUATIONS</p><h2>Modified core–surface model</h2></div>
+      <p class="section-intro-copy">The presentation relates the measured binding energy to the core terms and the contribution of the excess surface neutrons.</p>
+      <div class="equation-stack">
+        <div class="equation-block"><span class="equation-label">Core–surface potential</span><div class="equation"><i>V</i><sub>0</sub> = [−<i>BE</i>(A, Z) + 2a<sub>v</sub>Z − ε<sub>p</sub>·2Z(2Z − 1) − a<sub>c</sub>Z<sup>2</sup>/(2Z)<sup>1/3</sup>] / (A − 2Z) <small>MeV</small></div></div>
+        <div class="equation-block"><span class="equation-label">Modified binding-energy expression</span><div class="equation"><i>BE</i>(A, Z) = a<sub>v</sub>A − ε<sub>p</sub>·2Z(2Z − 1) − a<sub>c</sub>Z<sup>2</sup>/A<sup>1/3</sup> − <i>V</i><sub>0</sub>(A − 2Z)</div></div>
+        <div class="equation-block"><span class="equation-label">Energy contributions</span><div class="equation"><i>BE</i> = <i>BE</i><sub>v</sub> + <i>BE</i><sub>p</sub> + <i>BE</i><sub>c</sub> + <i>E</i><sub>H</sub></div><div class="equation secondary-equation"><i>V</i><sub>0</sub>(A − 2Z) = −<i>BE</i>(A, Z) + a<sub>v</sub>A − ε<sub>p</sub>·2Z(2Z − 1) − a<sub>c</sub>Z<sup>2</sup>/A<sup>1/3</sup></div></div>
+      </div>
+      <div class="term-grid">
+        <article class="term-card"><span class="term-number">A</span><h3>Volume energy</h3><p>Represents binding due to the strong nuclear force acting uniformly throughout the nucleus. Binding energy per nucleon is roughly constant, so total binding energy is proportional to the number of nucleons and thus to <span class="math">A</span>. This is the dominant, attractive term. Because the strong nuclear force is short-range, each nucleon binds only to its neighbouring nucleons.</p><div class="term-equation"><i>BE</i><sub>v</sub> ∝ A<br><i>BE</i><sub>v</sub> = a<sub>v</sub>A<br><i>BE</i><sub>v</sub> = 2a<sub>v</sub>Z <span>(symmetric core)</span></div></article>
+        <article class="term-card"><span class="term-number">B</span><h3>Pairing term in the core</h3><p>The inner core contains <span class="math">Z</span> protons and <span class="math">Z</span> neutrons, for a total of <span class="math">2Z</span> nucleons. The presentation gives the number of core nucleon pairs as <span class="math">N<sub>pair</sub> = 2Z(2Z − 1)</span>. If <span class="math">ε<sub>p</sub></span> is the interaction energy associated with each pair, the core pairing energy is:</p><div class="term-equation"><i>BE</i><sub>p</sub> = ε<sub>p</sub> · 2Z(2Z − 1)</div></article>
+        <article class="term-card"><span class="term-number">C</span><h3>Coulomb energy in the core</h3><p>Coulomb energy comes from electrostatic repulsion between protons. It is inversely proportional to the nuclear radius and increases the energy, making the nucleus less stable as proton number increases. The presentation uses <span class="math">Z − 1 ≈ Z</span> for <span class="math">Z &gt; 1</span>.</p><div class="term-equation"><i>BE</i><sub>c</sub> = a<sub>c</sub>Z(Z − 1)/A<sup>1/3</sup><br><i>BE</i><sub>c</sub> ≈ a<sub>c</sub>Z<sup>2</sup>/(2Z)<sup>1/3</sup> <span>(core approximation)</span></div></article>
+        <article class="term-card"><span class="term-number">D</span><h3>Core–surface potential term</h3><p>This is the asymmetry-dependent component of the average nuclear potential, proportional to neutron excess, <span class="math">A − 2Z = N − Z</span>. In the model, it arises from the interaction between the core and the excess neutrons in the surface region.</p><div class="term-equation"><i>E</i><sub>H</sub> = −<i>V</i><sub>0</sub>(A − 2Z)</div></article>
+      </div>
+      <div class="model-coefficients"><span class="section-label">MODIFIED MODEL COEFFICIENTS</span><div><span>a<sub>v</sub> = 15.56 MeV</span><span>ε<sub>p</sub> = 2 MeV</span><span>a<sub>c</sub> = 0.72 MeV</span></div><p>This framework provides a basis for examining the relationship between nuclear binding energy and the core–surface interaction potential.</p></div>
+    </section>
+
+    <section class="article-section results-section" id="results">
+      <div class="section-heading"><p class="section-label">06 · RESULTS &amp; DISCUSSION</p><h2>Potential across isotopes and isotones</h2></div>
+      <div class="result-explanation"><article><span class="result-tag">ISOTOPES · Z FIXED</span><p>For isotopes, proton number <span class="math">Z</span> remains constant while neutron number increases. The presentation reports that <span class="math">V<sub>0</sub></span> decreases as additional neutrons occupy the surface region and increase neutron excess <span class="math">N − Z</span>. More surface neutrons share the core interaction potential, reducing the average core–surface interaction strength per neutron.</p></article><article><span class="result-tag">ISOTONES · N FIXED</span><p>For isotones, neutron number <span class="math">N</span> remains constant while proton number increases. The presentation reports that <span class="math">V<sub>0</sub></span> increases as more proton–neutron pairs are added to the core. The larger core provides stronger attractive interaction with the fixed number of surface neutrons.</p></article></div>
+      <div class="data-panel"><div class="data-heading"><div><span class="result-tag">ISOTOPIC CHAIN</span><h3>Lead (Pb) isotopes</h3><p>Calculation of core–surface interaction potential for the isotopic chain of Pb nuclei.</p></div><span class="fixed-number">Z = 82</span></div><div class="table-wrap"><table><thead><tr><th>Element</th><th>A</th><th>N</th><th>Z</th><th>A − 2Z</th><th>V<sub>0</sub> (MeV)</th><th>BE (MeV)</th></tr></thead><tbody><tr><td>Pb</td><td>204</td><td>122</td><td>82</td><td>40</td><td>1334.11</td><td>1607.51</td></tr><tr><td>Pb</td><td>206</td><td>124</td><td>82</td><td>42</td><td>1270.94</td><td>1622.33</td></tr><tr><td>Pb</td><td>207</td><td>125</td><td>82</td><td>43</td><td>1241.54</td><td>1629.06</td></tr><tr><td>Pb</td><td>208</td><td>126</td><td>82</td><td>44</td><td>1213.49</td><td>1636.43</td></tr></tbody></table></div></div>
+      <div class="data-panel"><div class="data-heading"><div><span class="result-tag">ISOTONIC CHAIN</span><h3>Os, Ir, Pt, and Hg isotones</h3><p>Calculation of core–surface interaction potential for the isotonic chain at fixed neutron number.</p></div><span class="fixed-number">N = 116</span></div><div class="table-wrap"><table><thead><tr><th>Element</th><th>A</th><th>N</th><th>Z</th><th>A − 2Z</th><th>V<sub>0</sub> (MeV)</th><th>BE (MeV)</th></tr></thead><tbody><tr><td>Os</td><td>192</td><td>116</td><td>76</td><td>40</td><td>1145.19</td><td>1526.14</td></tr><tr><td>Ir</td><td>193</td><td>116</td><td>77</td><td>39</td><td>1205.62</td><td>1532.15</td></tr><tr><td>Pt</td><td>194</td><td>116</td><td>78</td><td>38</td><td>1269.69</td><td>1539.58</td></tr><tr><td>Hg</td><td>196</td><td>116</td><td>80</td><td>36</td><td>1409.77</td><td>1551.22</td></tr></tbody></table></div></div>
+      <div class="comparison-note"><span class="result-tag">LIGHT · MEDIUM · HEAVY NUCLEI</span><h3>Comparative variation of <span class="math">V<sub>0</sub></span></h3><p>The presentation compares the variation of the core–surface interaction potential in light, medium, and heavy nuclei for isotopes and isotones, and identifies Sn isotopes with <span class="math">Z = 50</span>. The presentation’s plots were image content and are omitted here; no additional plotted numerical values were present in its text.</p></div>
+    </section>
+
+    <section class="article-section conclusion-section" id="conclusion">
+      <div class="section-heading"><p class="section-label">07 · CONCLUSION</p><h2>Study conclusions</h2></div>
+      <ul class="conclusions"><li>The calculated core–surface interaction potential <span class="math">V<sub>0</sub></span> shows a clear dependence on neutron number and proton number for different nuclear systems.</li><li>For isotopes, <span class="math">V<sub>0</sub></span> decreases with increasing neutron number because additional surface neutrons increase neutron excess (<span class="math">N − Z</span>) and reduce the average core–surface interaction strength.</li><li>For isotones, <span class="math">V<sub>0</sub></span> increases with increasing proton number because additional protons enhance the proton–neutron core structure and strengthen its interaction with surface neutrons.</li><li>The decrease of <span class="math">V<sub>0</sub></span> is more significant in light nuclei and becomes gradual in medium and heavy nuclei due to the formation of a stable neutron-rich surface region.</li><li>Overall, the results support the modified nuclear model: the potential varies with neutron excess in isotopes and with core-size variation in isotones.</li></ul>
+    </section>
+
+    <section class="article-section references-section" id="references">
+      <div class="section-heading"><p class="section-label">08 · REFERENCES</p><h2>Sources cited in the presentation</h2></div>
+      <ol class="references"><li>K. K. Sirma, L. S. Chelimo, and K. M. Khanna, “A modified nuclear model for binding energy of nuclei,” <em>World Scientific News</em>, vol. 143, pp. 203–223, 2020.</li><li>H. A. Bethe and R. F. Bacher, “Nuclear physics. A. Stationary states of nuclei,” <em>Reviews of Modern Physics</em>, vol. 8, no. 2, pp. 82–229, 1936. doi: 10.1103/RevModPhys.8.82.</li><li>J. S. Lilley, <em>Nuclear Physics: Principles and Applications</em>. Chichester, U.K.: John Wiley &amp; Sons, 2001, pp. 38–39.</li><li>C. F. von Weizsäcker, “The Theory of Nuclear Masses,” <em>Magazine for Physics</em>, 96(7–8), 431–458, 1935.</li><li>N. Bohr and J. A. Wheeler, “The Mechanism of Nuclear Fission,” <em>Physical Review</em>, 56, 426, 1939.</li><li>H. A. Bethe and R. F. Bacher, “Nuclear Physics. A. Stationary States of Nuclei,” <em>Reviews of Modern Physics</em>, 8, 82, 1936.</li><li>M. M. Goeppert, “On Closed Shells in Nuclei,” <em>Physical Review</em>, 75, 1969, 1949. doi: 10.1103/PhysRev.75.1969.</li></ol>
+    </section>
+  </main>
+
+  <footer class="app-footer"><a href="index.html">← Back to Group 2 home</a><span>MANDALAY UNIVERSITY · DEPARTMENT OF PHYSICS</span><a href="#top">Back to top ↑</a></footer>
+  <script src="pwa.js"></script>
+</body>
+</html>
