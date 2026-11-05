@@ -6,3 +6,31 @@
 .wifi-steps{display:grid;gap:8px;margin:17px 0 14px}.wifi-step{display:grid;grid-template-columns:25px minmax(0,1fr);gap:10px;align-items:start;padding:11px 12px;border:1px solid #e4e7de;border-radius:9px;background:#f6f7f2}.wifi-step> b{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:#e3ead9;color:#58744b;font-family:"Playfair Display",Georgia,serif;font-size:12px}.wifi-step strong,.wifi-step small{display:block}.wifi-step strong{font-size:10px;color:#3c5043}.wifi-step small{margin-top:2px;color:#818c82;font-size:9px;line-height:1.5}.wifi-step code{display:block;margin-top:4px;color:#334c3c;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:700}.connect-row{grid-template-columns:1fr}.connect-row .primary-button{width:100%}
 .wifi-step .open-device-button{display:flex;align-items:center;justify-content:center;gap:10px;min-height:42px;margin-top:9px;padding:0 14px;border-radius:8px;background:#173b2e;color:#fff;text-decoration:none;font-size:10px;font-weight:750;box-shadow:0 4px 10px #10251e1c;transition:background .18s,transform .18s}.wifi-step .open-device-button:hover{background:#24523f;transform:translateY(-1px)}.wifi-step .open-device-button span{color:#d9c38e;font-size:14px}.connect-row[hidden]{display:none!important}.primary-button[hidden]{display:none!important}
 .mode-buttons button{background:#e2e8de;color:#314d3d;transition:background .18s,color .18s,box-shadow .18s}.mode-buttons button:hover:not(:disabled){background:#d5dfd1;color:#183b2d}.mode-buttons button[aria-pressed="true"]{background:#173b2e;color:#fff;box-shadow:0 3px 9px #0b1b1630}.mode-buttons button:disabled{opacity:.82;color:#5b6c60}.mode-buttons button[aria-pressed="true"]:disabled{background:#496757;color:#fff}
+
+/* Project page visual refinement */
+.hero-copy h1,.hero-copy h1 em{color:#783f38}
+.hero-copy h1 em{font-style:normal}
+.control-card,.dashboard-card,.api-details,.wifi-step,.system-notes{border:1px solid #c8d8e6;box-shadow:0 10px 24px rgba(13,31,46,.13)}
+
+/* Bright, readable fan-control dashboard */
+.hero-copy h1,.hero-copy h1 em{color:#c2183a}
+.hero-copy h1 em{font-style:normal}
+.eyebrow,.eyebrow span{color:#b21736}
+.dashboard-card{background:#fff;border:1px solid #c8d9eb;color:#183328;box-shadow:0 14px 34px rgba(23,42,66,.12)}
+.dashboard-top,.device-indicator,.dashboard-reading small,.dashboard-bottom,.dashboard-mode{color:#65746b}
+.dashboard-reading sup{color:#c2183a}
+.dashboard-bottom strong,.dashboard-mode strong{color:#183328}
+.mini-fan{border-color:#f0c6d0;color:#c2183a;background:#fff8f9}
+.meter{background:#f5dce2}
+.meter span{background:#c2183a}
+.dashboard-mode{border-color:#e5e9ef}
+.control-card,.dashboard-card,.api-details,.wifi-step,.system-notes{border-color:#c8d9eb;box-shadow:0 10px 26px rgba(23,42,66,.09)}
+.control-card,.dashboard-card,.api-details,.wifi-step,.system-notes{transition:transform .2s,box-shadow .2s}
+.control-card:hover,.dashboard-card:hover,.api-details:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(23,42,66,.13)}
+.primary-button,.mode-buttons button[aria-pressed="true"]{background:#c2183a;color:#fff}
+.primary-button:hover,.mode-buttons button[aria-pressed="true"]:hover{background:#9f1230}
+.mode-buttons button:disabled{opacity:.78}
+.mode-buttons button[aria-pressed="true"]:disabled{background:#c2183a;color:#fff}
+.wifi-step> b{background:#fff1f4;color:#c2183a}
+.wifi-step .open-device-button{background:#c2183a;box-shadow:0 4px 10px rgba(194,24,58,.2)}
+.wifi-step .open-device-button:hover{background:#9f1230}
