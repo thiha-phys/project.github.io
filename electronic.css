@@ -34,3 +34,6 @@
 .wifi-step> b{background:#fff1f4;color:#c2183a}
 .wifi-step .open-device-button{background:#c2183a;box-shadow:0 4px 10px rgba(194,24,58,.2)}
 .wifi-step .open-device-button:hover{background:#9f1230}
+
+.hero-copy h1,.hero-copy h1 em{color:#1f65ad}
+.hero-copy h1 em{font-style:normal}

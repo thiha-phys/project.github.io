@@ -16,3 +16,6 @@
 .category-card>p:last-child{color:#67766c}
 .category-card,.supervisor-banner{box-shadow:0 12px 30px rgba(23,42,66,.1);transition:transform .2s,box-shadow .2s}
 .category-card:hover,.supervisor-banner:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(23,42,66,.14)}
+
+.category-hero h1,.category-hero h1 em{color:#1f65ad}
+.category-hero h1 em{font-style:normal}

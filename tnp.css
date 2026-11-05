@@ -24,3 +24,6 @@ html{scroll-padding-top:25px}.tnp-shell{width:min(1120px,calc(100% - 48px));marg
 .definition{background:#fff1f4;color:#25362f;border-left:4px solid #c2183a}
 .definition-mark{border-color:#edbdca;color:#c2183a}
 .definition p{color:#647269}
+
+.tnp-hero h1,.tnp-hero h1 em{color:#1f65ad}
+.tnp-hero h1 em{font-style:normal}

@@ -27,3 +27,6 @@
 .result-lead{background:#fff1f4;border:1px solid #f0c6d0;box-shadow:0 8px 20px rgba(23,42,66,.08)}
 .result-lead p{color:#303b37}
 .result-check{background:#c2183a;color:white}
+
+.cmp-hero h1,.cmp-hero h1 em{color:#1f65ad}
+.cmp-hero h1 em{font-style:normal}

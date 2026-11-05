@@ -15,3 +15,6 @@
 .supervisor-label{color:var(--crimson)}
 .app-footer{background:#f3f6fa;color:#56646c;border-top:1px solid #c8d9eb}
 .app-footer a{color:#b21736}
+
+/* White page canvas requested for project reading pages */
+body{background:#fff}
