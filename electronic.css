@@ -34,6 +34,9 @@
 .wifi-step> b{background:#fff1f4;color:#c2183a}
 .wifi-step .open-device-button{background:#c2183a;box-shadow:0 4px 10px rgba(194,24,58,.2)}
 .wifi-step .open-device-button:hover{background:#9f1230}
+.circuit-link{display:inline-flex;align-items:center;gap:9px;margin-top:17px;padding:10px 13px;border:1px solid #c8d9eb;border-radius:7px;background:#f1f7fc;color:#1f65ad;font-size:10px;font-weight:750;transition:background .18s,transform .18s}
+.circuit-link:hover{background:#e4f0fa;transform:translateY(-1px)}
+.circuit-link span{font-size:14px}
 
 .hero-copy h1,.hero-copy h1 em{color:#1f65ad}
 .hero-copy h1 em{font-style:normal}

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8fb">
+  <title>ESP32-C3 Fan Controller | Circuit Wiring Reference</title>
+  <style>
+    :root{--ink:#1c2d3a;--muted:#667787;--blue:#2568a8;--red:#c52a45;--green:#26744b;--line:#d6e0e9;--paper:#f7f8fb;--card:#fff;--warn:#fff4e5;--warn-line:#ebc98c}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{width:min(1100px,calc(100% - 32px));margin:0 auto;padding:30px 0 55px}.topline{font-size:11px;font-weight:800;letter-spacing:.16em;color:var(--blue)}
+    h1{max-width:850px;margin:8px 0 12px;font-size:clamp(30px,5vw,48px);line-height:1.1;letter-spacing:-.035em;color:#183e61}h2{margin:0;font-size:21px;letter-spacing:-.02em}h3{margin:0;font-size:16px}
+    .intro{max-width:800px;color:var(--muted);margin:0 0 23px}.badges{display:flex;flex-wrap:wrap;gap:8px;margin:17px 0 24px}.badge{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#44596b;font-size:11px;font-weight:700}
+    .warning{margin:20px 0;padding:16px 18px;border:1px solid var(--warn-line);border-left:5px solid #d18b19;border-radius:10px;background:var(--warn);color:#62491d}.warning strong{display:block;margin-bottom:5px;color:#714a0c}.warning p{margin:0;font-size:13px;line-height:1.7}
+    .panel{margin:16px 0;padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 8px 24px rgba(30,55,75,.06)}.panel-head{display:flex;align-items:baseline;gap:12px;margin-bottom:13px}.panel-head span{color:#8494a1;font-size:10px;font-weight:800;letter-spacing:.14em}.panel p{margin:8px 0 0;color:var(--muted);font-size:12px}
+    .diagram-wrap{overflow-x:auto;border:1px solid #e4eaf0;border-radius:10px;background:linear-gradient(#fff,#fcfdff);padding:8px}.diagram{display:block;width:100%;min-width:760px;height:auto}.box{fill:#fff;stroke:#b9cbd8;stroke-width:2}.board{fill:#edf4fa;stroke:#5790be;stroke-width:2}.power{fill:#fff4f4;stroke:#d88891;stroke-width:2}.device{fill:#f3f8f4;stroke:#80ad8e;stroke-width:2}.shift{fill:#f4f0fc;stroke:#ac99d2;stroke-width:2}.fanbox{fill:#eff7f1;stroke:#85ae93;stroke-width:2}.title{font:700 17px system-ui,sans-serif;fill:#20384a}.sub{font:500 12px system-ui,sans-serif;fill:#657787}.pin{font:700 12px ui-monospace,Menlo,monospace;fill:#294963}.label{font:700 11px system-ui,sans-serif;fill:#4d6375}.wire-red{fill:none;stroke:#d03b45;stroke-width:3}.wire-black{fill:none;stroke:#34404a;stroke-width:3}.wire-blue{fill:none;stroke:#3575bb;stroke-width:3}.wire-green{fill:none;stroke:#268251;stroke-width:3}.wire-purple{fill:none;stroke:#7654b4;stroke-width:3}.wire-orange{fill:none;stroke:#d48020;stroke-width:3}.thin{stroke-width:2}.ground{stroke:#34404a;stroke-width:3}.svg-label-bg{fill:#fff;stroke:#e2e8ed;stroke-width:1}
+    .legend{display:flex;flex-wrap:wrap;gap:14px;margin:13px 3px 0;color:#6d7d89;font-size:11px}.legend span{display:inline-flex;align-items:center;gap:6px}.key{width:19px;height:3px;border-radius:4px;background:#d03b45}.key.signal{background:#3575bb}.key.ground{background:#34404a}.key.fan{background:#d48020}.key.i2c{background:#7654b4}
+    .table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:11px 12px;border-bottom:1px solid #e8edf1;text-align:left;vertical-align:top}th{background:#f1f5f8;color:#40596b;font-size:11px;letter-spacing:.04em}td code,.note code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:700;color:#214d75;background:#f1f5f8;padding:2px 5px;border-radius:4px}tbody tr:last-child td{border-bottom:0}
+    .notes{display:grid;grid-template-columns:1fr 1fr;gap:12px}.note{padding:15px;border:1px solid var(--line);border-radius:9px;background:#fbfcfe}.note strong{display:block;margin-bottom:5px;color:#315c7b;font-size:13px}.note p{margin:0;color:var(--muted);font-size:12px;line-height:1.7}.steps{margin:0;padding-left:20px;color:#506474;font-size:13px}.steps li+li{margin-top:7px}.source{margin-top:21px;padding-top:14px;border-top:1px solid var(--line);color:#7a8995;font-size:11px}.source a{color:#28649b}
+    @media(max-width:640px){main{width:calc(100% - 22px);padding-top:20px}.panel{padding:14px;border-radius:11px}.panel-head{display:block}.panel-head span{display:block;margin-bottom:3px}.notes{grid-template-columns:1fr}.intro{font-size:14px}th,td{padding:9px 10px;font-size:12px}}
+    @media print{body{background:#fff}.panel,.warning{box-shadow:none;break-inside:avoid}main{width:100%;padding:0}.diagram{min-width:0}.diagram-wrap{overflow:visible}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="topline">GROUP 2 · PHYSICS PROJECT</div>
+  <h1>Automatic Fan Speed Controller<br>Circuit Wiring Reference</h1>
+  <p class="intro">ESP32-C3 Super Mini · LM35 · 16×2 I²C LCD · 9V DC fan · C828 NPN low-side driver. Use this as a wiring reference while assembling the hardware.</p>
+  <a class="badge" href="electronic.html">← Back to Electronics project</a>
+  <div class="badges"><span class="badge">ESP32-C3 Super Mini</span><span class="badge">LM35 analog sensor</span><span class="badge">I²C level shifter</span><span class="badge">C828 + 1N4007</span><span class="badge">Regulated 5V and 9V DC</span></div>
+
+  <aside class="warning"><strong>Check the fan current before using C828</strong><p>A common 2SC828 datasheet lists 50 mA as the absolute maximum continuous collector current. A small fan can draw more current at startup than its normal running current. Read the fan label or measure its current first. If its startup/running current is near or above the transistor's safe limit, do not use C828 for that fan; substitute a suitably rated higher-current NPN transistor and verify its pinout. Never test by connecting the fan directly to an ESP32 pin.</p></aside>
+
+  <section class="panel">
+    <div class="panel-head"><span>01 · WIRING OVERVIEW</span><h2>Complete connection map</h2></div>
+    <div class="diagram-wrap">
+      <svg class="diagram" viewBox="0 0 1120 790" role="img" aria-labelledby="svgtitle svgdesc" xmlns="http://www.w3.org/2000/svg">
+        <title id="svgtitle">ESP32-C3 temperature-controlled fan wiring map</title>
+        <desc id="svgdesc">LM35 to GPIO3; I2C LCD through a bidirectional level shifter to GPIO0 and GPIO1; GPIO10 through a resistor to a C828 fan driver; separate 5V and 9V supplies share ground.</desc>
+        <defs>
+          <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3575bb"/></marker>
+          <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d03b45"/></marker>
+          <marker id="arrowPurple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7654b4"/></marker>
+          <marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d48020"/></marker>
+        </defs>
+        <!-- Sensor row -->
+        <rect x="12" y="12" width="1096" height="200" rx="16" fill="#fbfcfe" stroke="#e1e8ee"/>
+        <text x="34" y="42" class="label">TEMPERATURE INPUT</text>
+        <rect x="42" y="67" width="205" height="105" rx="12" class="device"/>
+        <text x="62" y="98" class="title">LM35 · TO-92</text><text x="62" y="124" class="sub">Pin 1 · +Vs → regulated +5V</text><text x="62" y="146" class="sub">Pin 2 · VOUT → GPIO3</text><text x="62" y="164" class="sub">Pin 3 · GND → common ground</text>
+        <path d="M248 134H328" class="wire-blue" marker-end="url(#arrowBlue)"/><rect x="267" y="107" width="55" height="20" rx="5" class="svg-label-bg"/><text x="274" y="121" class="pin">VOUT</text>
+        <rect x="338" y="67" width="250" height="105" rx="12" class="board"/>
+        <text x="360" y="98" class="title">ESP32-C3 Super Mini</text><text x="360" y="126" class="pin">GPIO3 / ADC1</text><text x="360" y="150" class="sub">LM35 analog temperature input</text>
+        <rect x="684" y="67" width="380" height="105" rx="12" class="power"/>
+        <text x="706" y="99" class="title">Regulated 5V DC</text><text x="706" y="126" class="sub">ESP32 5V pin · LM35 +Vs · LCD / level-shifter logic</text><text x="706" y="150" class="sub">Supply negative joins the common ground</text>
+        <path d="M684 118H620V82H588" class="wire-red" marker-end="url(#arrowRed)"/>
+
+        <!-- I2C row -->
+        <rect x="12" y="228" width="1096" height="230" rx="16" fill="#fbfcfe" stroke="#e1e8ee"/>
+        <text x="34" y="258" class="label">I²C DISPLAY · USE A BIDIRECTIONAL LOGIC LEVEL SHIFTER</text>
+        <rect x="40" y="286" width="238" height="132" rx="12" class="board"/>
+        <text x="60" y="317" class="title">ESP32-C3</text><text x="60" y="347" class="pin">GPIO0 · SDA · 3.3V side</text><text x="60" y="376" class="pin">GPIO1 · SCL · 3.3V side</text><text x="60" y="401" class="sub">3V3 and GND to shifter LV side</text>
+        <rect x="412" y="286" width="286" height="132" rx="12" class="shift"/>
+        <text x="435" y="317" class="title">I²C level shifter</text><text x="435" y="346" class="sub">LV = ESP32 3.3V · HV = 5V</text><text x="435" y="374" class="sub">LV1 ↔ HV1 · SDA</text><text x="435" y="400" class="sub">LV2 ↔ HV2 · SCL · GND common</text>
+        <rect x="832" y="286" width="233" height="132" rx="12" class="device"/>
+        <text x="854" y="317" class="title">16×2 I²C LCD</text><text x="854" y="346" class="sub">VCC → +5V · GND → common</text><text x="854" y="374" class="sub">SDA → shifter HV1</text><text x="854" y="400" class="sub">SCL → shifter HV2</text>
+        <path d="M278 345H402" class="wire-purple" marker-end="url(#arrowPurple)"/><path d="M278 382H402" class="wire-green" marker-end="url(#arrowBlue)"/>
+        <path d="M698 345H822" class="wire-purple" marker-end="url(#arrowPurple)"/><path d="M698 382H822" class="wire-green" marker-end="url(#arrowBlue)"/>
+        <text x="307" y="336" class="pin">SDA · GPIO0</text><text x="307" y="374" class="pin">SCL · GPIO1</text>
+
+        <!-- Fan row -->
+        <rect x="12" y="474" width="1096" height="292" rx="16" fill="#fbfcfe" stroke="#e1e8ee"/>
+        <text x="34" y="505" class="label">9V FAN DRIVER · LOW-SIDE NPN SWITCH · LOGIC PINS NEVER POWER THE FAN</text>
+        <rect x="40" y="548" width="210" height="115" rx="12" class="power"/>
+        <text x="62" y="580" class="title">Regulated 9V DC</text><text x="62" y="610" class="sub">+9V → fan positive</text><text x="62" y="638" class="sub">Supply negative → common GND</text>
+        <rect x="327" y="548" width="205" height="115" rx="12" class="fanbox"/>
+        <text x="350" y="580" class="title">9V DC fan</text><text x="350" y="610" class="sub">Fan + → +9V rail</text><text x="350" y="638" class="sub">Fan − → C828 collector</text>
+        <rect x="738" y="548" width="310" height="115" rx="12" class="board"/>
+        <text x="760" y="580" class="title">C828 · NPN transistor</text><text x="760" y="610" class="sub">Base ← 1kΩ ← GPIO10 / PWM</text><text x="760" y="638" class="sub">Collector ← fan − · Emitter → GND</text>
+        <path d="M250 598H318" class="wire-orange" marker-end="url(#arrowOrange)"/><text x="258" y="586" class="pin">+9V</text>
+        <path d="M532 620H728" class="wire-black" marker-end="url(#arrowBlue)"/><text x="571" y="608" class="pin">Fan − to C</text>
+        <path d="M532 570V530H1048V570" class="wire-orange"/><text x="662" y="524" class="pin">1N4007 · cathode (K) to +9V</text>
+        <path d="M532 641V684H1048V641" class="wire-black thin"/><text x="647" y="704" class="pin">Diode anode (A) to fan − / collector</text>
+        <path d="M588 745H904" class="wire-blue" marker-end="url(#arrowBlue)"/><text x="600" y="735" class="pin">GPIO10 → 1kΩ base resistor → B</text>
+        <path d="M905 663V745" class="wire-black"/><path d="M892 748H918M897 755H913M902 762H908" class="ground"/><text x="932" y="751" class="pin">E → GND</text>
+        <rect x="40" y="684" width="440" height="52" rx="9" fill="#fff" stroke="#e1e8ee"/>
+        <text x="56" y="706" class="sub">Optional: 10kΩ from base (B) to emitter (E)/GND</text><text x="56" y="725" class="sub">helps keep the transistor off while the ESP32 boots.</text>
+      </svg>
+    </div>
+    <div class="legend"><span><i class="key"></i>5V DC</span><span><i class="key fan"></i>9V fan supply</span><span><i class="key signal"></i>GPIO / PWM</span><span><i class="key i2c"></i>SDA</span><span><i class="key ground"></i>Ground</span></div>
+    <p>The SVG is a connection map; use the table below as the exact pin-to-pin wiring list. All grounds (5V supply, 9V supply, ESP32, sensor, LCD and transistor emitter) must be tied together.</p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><span>02 · PIN-TO-PIN LIST</span><h2>Make these connections</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>From</th><th>To</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Regulated +5V</td><td>ESP32-C3 board pin marked <code>5V</code>; LM35 pin 1 (+Vs); level shifter HV; LCD VCC</td><td>Use a stable regulated 5V DC source.</td></tr>
+        <tr><td>ESP32-C3 <code>GPIO3</code></td><td>LM35 pin 2 (VOUT)</td><td>Analog input. LM35 output scale is 10 mV/°C.</td></tr>
+        <tr><td>ESP32-C3 <code>3V3</code></td><td>I²C level shifter LV</td><td>Do not connect this LV pin to 5V.</td></tr>
+        <tr><td>ESP32-C3 <code>GPIO0</code></td><td>Level shifter LV1 ↔ HV1 → LCD SDA</td><td>I²C data line (SDA).</td></tr>
+        <tr><td>ESP32-C3 <code>GPIO1</code></td><td>Level shifter LV2 ↔ HV2 → LCD SCL</td><td>I²C clock line (SCL).</td></tr>
+        <tr><td>Regulated +9V</td><td>Fan positive (+)</td><td>Use a 9V source capable of the fan's startup current.</td></tr>
+        <tr><td>Fan negative (−)</td><td>C828 collector (C)</td><td>Low-side switching connection.</td></tr>
+        <tr><td>ESP32-C3 <code>GPIO10</code></td><td>1kΩ resistor → C828 base (B)</td><td>GPIO drives the transistor base only; never the fan.</td></tr>
+        <tr><td>C828 emitter (E)</td><td>Common GND</td><td>10kΩ base-to-emitter pull-down is optional.</td></tr>
+        <tr><td>1N4007 cathode (K, banded end)</td><td>Fan positive / +9V</td><td>Flyback diode across the fan.</td></tr>
+        <tr><td>1N4007 anode (A)</td><td>Fan negative / C828 collector</td><td>Diode is reverse-biased during normal fan operation.</td></tr>
+        <tr><td>All supply negative terminals</td><td>ESP32 GND, LM35 pin 3, LCD GND, level-shifter GND and C828 emitter</td><td>One shared ground reference is required.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><span>03 · ASSEMBLY NOTES</span><h2>Before applying power</h2></div>
+    <div class="notes">
+      <article class="note"><strong>LM35 orientation</strong><p>For the TI LP TO-92 package, the datasheet shows the pinout from the bottom view: pin 1 +Vs, pin 2 VOUT, pin 3 GND. Confirm the package/view before wiring; other LM35 packages have different pin arrangements.</p></article>
+      <article class="note"><strong>I²C voltage levels</strong><p>Use a bidirectional I²C level shifter when the LCD backpack is powered at 5V. ESP32-C3 pins are 3.3V-domain; do not let a 5V pull-up reach SDA/SCL GPIOs. If your LCD/backpack is confirmed 3.3V-compatible, the level shifter may be unnecessary.</p></article>
+      <article class="note"><strong>C828 lead arrangement</strong><p>The drawing names the transistor terminals functionally as B, C and E. A common ST 2SC828 TO-92 datasheet lists pins 1=E, 2=C, 3=B, but it also allows different pin configurations. Check the exact part's datasheet before inserting it.</p></article>
+      <article class="note"><strong>Power the board once</strong><p>Feed regulated 5V into the board's marked 5V pin or power it by USB-C; do not connect both sources together unless the exact board's power circuit confirms that is safe. Never apply 5V to a GPIO or the 3V3 pin.</p></article>
+      <article class="note"><strong>Fan type and PWM</strong><p>Check the fan label and current, including startup current. Some 2-wire brushless fans do not respond smoothly to low-side PWM and may need a different control method or a fan designed for PWM control.</p></article>
+      <article class="note"><strong>Power supply grounds</strong><p>Keep the +5V and +9V rails separate. Only connect their negative (GND) terminals together. Do not connect +9V to the ESP32, LM35 output, LCD logic pins or GPIOs.</p></article>
+    </div>
+    <ol class="steps" style="margin-top:16px"><li>With power disconnected, check the LM35, transistor and diode orientations.</li><li>Power the ESP32/LCD/sensor from regulated 5V first and confirm the LCD and temperature reading.</li><li>Only connect the fan supply after confirming the fan current and choosing a transistor with adequate rating.</li></ol>
+    <div class="source">Datasheet references: <a href="https://www.ti.com/lit/ds/symlink/lm35.pdf" target="_blank" rel="noopener noreferrer">TI LM35</a> · <a href="https://documentation.espressif.com/esp32-c3_datasheet_en.html" target="_blank" rel="noopener noreferrer">Espressif ESP32-C3</a> · <a href="https://hifau.com/uploads/file/pdffiles/2SC828-ST.pdf" target="_blank" rel="noopener noreferrer">2SC828/ST datasheet</a></div>
+  </section>
+</main>
+</body>
+</html>

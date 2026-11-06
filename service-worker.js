@@ -1,8 +1,9 @@
-const CACHE_NAME = 'mandalay-physics-group-2-v15';
+const CACHE_NAME = 'mandalay-physics-group-2-v16';
 const APP_FILES = [
   './',
   './index.html',
   './electronic.html',
+  './circuit-diagram.html',
   './ENP.html',
   './TNP.html',
   './tnp.css',
