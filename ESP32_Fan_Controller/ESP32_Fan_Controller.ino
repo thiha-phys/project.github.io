@@ -33,12 +33,13 @@ constexpr uint8_t I2C_SCL_PIN = 1;      // Board label 1 / GPIO1
 constexpr uint8_t LCD_I2C_ADDRESS = 0x27; // Common alternatives: 0x3F
 constexpr uint8_t LCD_COLUMNS = 16;
 constexpr uint8_t LCD_ROWS = 2;
+constexpr bool ENABLE_LCD = false; // Set true only after the I2C LCD is wired.
 
 const char *AP_SSID = "FanController";
 const char *AP_PASSWORD = "mdyphysgp2"; // At least 8 characters
 
 constexpr float MIN_TEMP_C = 20.0f;
-constexpr float MAX_TEMP_C = 35.0f;
+constexpr float MAX_TEMP_C = 45.0f;
 constexpr uint32_t PWM_FREQUENCY_HZ = 1000; // Near the original Arduino Nano PWM range
 constexpr uint8_t PWM_RESOLUTION_BITS = 8; // analogWrite range: 0..255
 constexpr uint32_t SENSOR_SAMPLE_MS = 1000;
@@ -74,22 +75,24 @@ main{max-width:820px;margin:auto;padding:22px}.card{background:#fffefa;border:1p
 .status{padding:13px 15px;background:#f2f4ed;border-radius:13px;color:#4c6255;margin:16px 0}.status.error{background:#fff0eb;color:#b33d29}.status.ok{background:#eaf4e9;color:#315b3e}
 button{font:inherit;font-weight:750;border:0;border-radius:12px;padding:14px 18px;cursor:pointer;background:var(--green);color:white}button:disabled{opacity:.48;cursor:not-allowed}.wide{width:100%}.modes{display:grid;grid-template-columns:1fr 1fr;background:#eff1eb;border-radius:14px;padding:5px;margin:12px 0}.modes button{background:#e2e8de;color:#314d3d;transition:background .18s,color .18s,box-shadow .18s}.modes button:hover:not(:disabled){background:#d5dfd1;color:#183b2d}.modes button.active{background:#173b2e;color:#fff;box-shadow:0 3px 9px #0b1b1630}.modes button:disabled{opacity:.82;color:#5b6c60}.modes button.active:disabled{background:#496757;color:#fff}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 4px}.slider{width:100%;accent-color:var(--green)}.off{background:#fff2ed;border:1px solid #efcfc4;color:#a34432}.instructions{padding-left:1.3rem;color:var(--muted)}code{background:#f0f2eb;padding:3px 7px;border-radius:5px}
 @media(max-width:480px){main{padding:12px}.card{border-radius:18px;padding:22px 18px}.readings{gap:8px}.reading{padding:13px}}
+.quick-controls{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:stretch;gap:8px;width:100%;margin-top:14px}.preset-row{display:contents}.quick-controls button{width:100%;min-width:0;min-height:48px;padding:8px 3px;white-space:nowrap;font-size:clamp(.68rem,2.8vw,.9rem)}.preset{background:#f0f4eb;color:#294a37;border:1px solid #cad7c1;border-radius:9px}.preset:hover:not(:disabled),.preset[aria-pressed="true"]{background:#173b2e;color:#fff}.preset:disabled{opacity:.5}
 </style></head><body><main>
 <section class="card"><p class="eyebrow">MANDALAY UNIVERSITY · DEPARTMENT OF PHYSICS</p><h1>Automatic Fan<br>Speed Controller</h1><p class="muted">ESP32 · LM35 · 9V DC fan</p>
 <div class="readings"><div class="reading"><span class="label">ROOM TEMPERATURE</span><strong class="big" id="temp">--.-°C</strong></div><div class="reading"><span class="label">FAN OUTPUT</span><strong class="big" id="speed">--%</strong><div class="bar"><span id="bar"></span></div></div></div>
 <p class="status" id="status">Device ready. Claim the controls to begin.</p><button class="wide" id="claim">Claim fan controls</button></section>
 <section class="card"><p class="eyebrow">FAN SETTINGS</p><h2>Control Panel</h2><div class="modes"><button id="auto" class="active" disabled>Auto</button><button id="manual" disabled>Manual</button></div>
-<div class="row"><label for="slider">Manual fan speed</label><strong id="speedLabel">0%</strong></div><input class="slider" id="slider" type="range" min="0" max="100" value="0" disabled><div class="row muted"><small>0% · STOP</small><small>100% · MAX</small></div><button class="off" id="off" disabled>■ &nbsp; Fan Off</button></section>
+<div class="row"><label for="slider">Manual fan speed</label><strong id="speedLabel">0%</strong></div><input class="slider" id="slider" type="range" min="0" max="100" value="0" disabled><div class="row muted"><small>0% · STOP</small><small>100% · MAX</small></div><div class="quick-controls"><button class="off" id="off" disabled>Fan Off</button><div class="preset-row" role="group" aria-label="Quick manual fan speed"><button class="preset" data-speed="25" disabled>25%</button><button class="preset" data-speed="50" disabled>50%</button><button class="preset" data-speed="75" disabled>75%</button><button class="preset" data-speed="100" disabled>100%</button></div></div></section>
 <section class="card"><p class="eyebrow">HOW TO CONNECT</p><ol class="instructions"><li>In phone Wi-Fi settings, join <b>FanController</b> (password: <b>mdyphysgp2</b>).</li><li>Stay on that Wi-Fi, open your browser and visit <code>http://192.168.4.1/</code>.</li><li>Press <b>Claim fan controls</b>. Use Auto or Manual on this same page.</li></ol><p class="muted">This page is hosted by the ESP32. No internet connection, GitHub page, or API key is required for local fan control.</p></section>
 </main><script>
-let token=sessionStorage.getItem('fanToken')||'',clientId=sessionStorage.getItem('fanClient')||('client-'+Math.random().toString(16).slice(2));sessionStorage.setItem('fanClient',clientId);let connected=false,mode='auto';
+let token=sessionStorage.getItem('fanToken')||'',clientId=sessionStorage.getItem('fanClient')||('client-'+Math.random().toString(16).slice(2));sessionStorage.setItem('fanClient',clientId);let connected=false,mode='auto';const quickButtons=[...document.querySelectorAll('.preset')];
 const $=id=>document.getElementById(id),status=(text,kind='')=>{$('status').textContent=text;$('status').className='status '+kind};
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,cache:'no-store'});const d=await r.json();if(!r.ok)throw Object.assign(new Error(d.code==='in_use'?'Another user already has control.':'Device request failed.'),{code:d.code});return d}
-function render(d){$('temp').textContent=Number(d.temperatureC).toFixed(1)+'°C';$('speed').textContent=d.fanOff?'OFF':d.fanSpeed+'%';$('bar').style.width=d.fanSpeed+'%';mode=d.mode;$('auto').classList.toggle('active',mode==='auto');$('manual').classList.toggle('active',mode==='manual');$('slider').value=d.fanSpeed;$('speedLabel').textContent=d.fanSpeed+'%';$('auto').disabled=!connected;$('manual').disabled=!connected;$('slider').disabled=!connected||mode!=='manual';$('off').disabled=!connected||mode!=='manual'}
+function render(d){$('temp').textContent=Number(d.temperatureC).toFixed(1)+'°C';$('speed').textContent=d.fanOff?'OFF':d.fanSpeed+'%';$('bar').style.width=d.fanSpeed+'%';mode=d.mode;$('auto').classList.toggle('active',mode==='auto');$('manual').classList.toggle('active',mode==='manual');$('slider').value=d.fanSpeed;$('speedLabel').textContent=d.fanSpeed+'%';$('auto').disabled=!connected;$('manual').disabled=!connected;$('slider').disabled=!connected||mode!=='manual';$('off').disabled=!connected||mode!=='manual';quickButtons.forEach(b=>{b.disabled=!connected;b.setAttribute('aria-pressed',String(mode==='manual'&&Number(b.dataset.speed)===Number(d.fanSpeed)))})}
 async function refresh(){try{let d=await api('/api/status',token?{token}:null);render(d);if(!connected&&d.occupied){$('claim').disabled=true;status('Another user currently has control. Please wait until they release it.','error')}else if(!connected){$('claim').disabled=false;status('ESP32 is online. Claim the controls when ready.','ok')}}catch(e){status('ESP32 did not respond. Check that you are connected to its Wi-Fi.','error')}}
 $('claim').onclick=async()=>{if(connected){try{await api('/api/disconnect',{token})}catch(e){}connected=false;token='';sessionStorage.removeItem('fanToken');$('claim').textContent='Claim fan controls';$('claim').disabled=false;status('Control released.');render({temperatureC:Number($('temp').textContent)||0,fanSpeed:0,mode:'auto',fanOff:true});return} $('claim').disabled=true;status('Connecting to ESP32…');try{const d=await api('/api/connect',{clientId});token=d.token;sessionStorage.setItem('fanToken',token);connected=true;$('claim').textContent='Release control';$('claim').disabled=false;status('Connected. You have control of this fan.','ok');render(await api('/api/status',{token}))}catch(e){status(e.code==='in_use'?'Another user already has control.':'Could not connect. Check the hotspot and reload this page.','error');$('claim').disabled=e.code==='in_use'}};
 $('auto').onclick=async()=>{try{await api('/api/control',{token,mode:'auto'});render(await api('/api/status',{token}))}catch(e){status(e.message,'error')}};$('manual').onclick=async()=>{try{await api('/api/control',{token,mode:'manual'});render(await api('/api/status',{token}))}catch(e){status(e.message,'error')}};
 $('slider').oninput=()=>$('speedLabel').textContent=$('slider').value+'%';$('slider').onchange=async()=>{try{await api('/api/control',{token,speed:Number($('slider').value)});render(await api('/api/status',{token}))}catch(e){status(e.message,'error')}};$('off').onclick=async()=>{try{await api('/api/control',{token,off:true});render(await api('/api/status',{token}))}catch(e){status(e.message,'error')}};
+quickButtons.forEach(b=>b.onclick=async()=>{try{await api('/api/control',{token,speed:Number(b.dataset.speed)});render(await api('/api/status',{token}))}catch(e){status(e.message,'error')}});
 setInterval(async()=>{if(connected){try{await api('/api/heartbeat',{token});render(await api('/api/status',{token}))}catch(e){connected=false;token='';sessionStorage.removeItem('fanToken');$('claim').textContent='Claim fan controls';status('Control connection lost. Claim controls again.','error')}}else await refresh()},5000);refresh();
 </script></body></html>
 )HTML";
@@ -288,24 +291,51 @@ void handleControl() {
 
 void setup() {
   Serial.begin(115200);
+  delay(800); // Give USB Serial/JTAG time to become available after power-up.
+  Serial.println();
+  Serial.println("Booting ESP32-C3 Fan Controller...");
+
   pinMode(FAN_PWM_PIN, OUTPUT);
   analogWriteResolution(FAN_PWM_PIN, PWM_RESOLUTION_BITS);
   analogWriteFrequency(FAN_PWM_PIN, PWM_FREQUENCY_HZ);
   analogWrite(FAN_PWM_PIN, 0); // Keep fan output off during startup.
 
-  analogReadResolution(12);
-  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("Fan Controller");
-  lcd.setCursor(0, 1);
-  lcd.print("Starting Wi-Fi");
-
+  // Start the access point before touching the optional I2C LCD. This keeps
+  // the hotspot available even if the LCD is absent or its bus is faulty.
+  WiFi.persistent(false);
   WiFi.mode(WIFI_AP);
-  WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1),
-                    IPAddress(255, 255, 255, 0));
-  const bool apStarted = WiFi.softAP(AP_SSID, AP_PASSWORD);
+  delay(100);
+  const bool apConfigured = WiFi.softAPConfig(
+      IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1),
+      IPAddress(255, 255, 255, 0));
+  Serial.printf("Hotspot IP setup: %s\n", apConfigured ? "OK" : "FAILED");
+
+  bool apStarted = WiFi.softAP(AP_SSID, AP_PASSWORD);
+  if (!apStarted) {
+    Serial.println("Hotspot start failed; retrying once...");
+    delay(500);
+    WiFi.mode(WIFI_AP);
+    delay(100);
+    apStarted = WiFi.softAP(AP_SSID, AP_PASSWORD);
+  }
+  Serial.printf("Hotspot started: %s\n", apStarted ? "YES" : "NO");
+  Serial.printf("Wi-Fi name: %s\n", AP_SSID);
+  Serial.printf("Wi-Fi password: %s\n", AP_PASSWORD);
+  Serial.printf("Open page: http://%s/\n", WiFi.softAPIP().toString().c_str());
+
+  analogReadResolution(12);
+  if (ENABLE_LCD) {
+    Serial.println("Initializing I2C LCD...");
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+    lcd.init();
+    lcd.backlight();
+    lcd.setCursor(0, 0);
+    lcd.print("Fan Controller");
+    lcd.setCursor(0, 1);
+    lcd.print("Starting Wi-Fi");
+  } else {
+    Serial.println("LCD disabled in sketch; continuing without it.");
+  }
 
   server.on("/", HTTP_GET, handleRoot);
   server.on("/api/status", HTTP_GET, handleStatus);
@@ -317,13 +347,9 @@ void setup() {
   server.onNotFound([]() { sendJson(404, "{\"error\":\"not_found\"}"); });
   server.begin();
 
-  Serial.println();
-  Serial.println("ESP32 Fan Controller ready");
-  Serial.printf("Hotspot: %s\nPassword: %s\n", AP_SSID, AP_PASSWORD);
-  Serial.printf("Web page: http://%s/\n", WiFi.softAPIP().toString().c_str());
-  Serial.printf("Hotspot started: %s\n", apStarted ? "yes" : "no");
+  Serial.println("HTTP server started. ESP32 Fan Controller ready.");
   sampleTemperature();
-  refreshLcd();
+  if (ENABLE_LCD) refreshLcd();
 }
 
 void loop() {
@@ -338,7 +364,7 @@ void loop() {
   }
   if (now - lastLcdRefreshMs >= LCD_REFRESH_MS) {
     lastLcdRefreshMs = now;
-    refreshLcd();
+    if (ENABLE_LCD) refreshLcd();
   }
 }
 

@@ -29,7 +29,7 @@ This is separate from the GitHub Pages academic showcase. The live page is serve
 | Fan-driver base resistor input | Board pin `10` / GPIO10 |
 | LCD address | `0x27` (change to `0x3F` if needed) |
 
-The sketch uses the original 20–35 °C range: fan off at or below 20 °C, then ramps to full output at 35 °C. Change `MIN_TEMP_C` and `MAX_TEMP_C` in the sketch if the project needs different thresholds.
+The sketch uses the 20–45 °C range: fan off at or below 20 °C, then ramps to full output at 45 °C. Change `MIN_TEMP_C` and `MAX_TEMP_C` in the sketch if the project needs different thresholds.
 
 ## Hardware cautions before powering the fan
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mandalay-physics-group-2-v16';
+const CACHE_NAME = 'mandalay-physics-group-2-v18';
 const APP_FILES = [
   './',
   './index.html',

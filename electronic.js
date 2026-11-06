@@ -12,6 +12,7 @@ const manualButton = document.getElementById('manualButton');
 const speedSlider = document.getElementById('speedSlider');
 const speedLabel = document.getElementById('speedLabel');
 const fanOffButton = document.getElementById('fanOffButton');
+const presetButtons = [...document.querySelectorAll('.preset-button')];
 const manualHint = document.getElementById('manualHint');
 const servedByEsp32 = window.location.hostname === '192.168.4.1';
 
@@ -59,6 +60,7 @@ function updateControlAvailability() {
   const isManual = controlMode === 'manual';
   speedSlider.disabled = !connected || !isManual;
   fanOffButton.disabled = !connected || !isManual;
+  presetButtons.forEach((button) => { button.disabled = !connected; });
   autoButton.setAttribute('aria-pressed', String(!isManual));
   manualButton.setAttribute('aria-pressed', String(isManual));
   manualHint.textContent = !connected
@@ -86,6 +88,9 @@ function renderStatus(data) {
     fanMeter.style.width = `${boundedSpeed}%`;
     speedSlider.value = String(boundedSpeed);
     speedLabel.textContent = `${boundedSpeed}%`;
+    presetButtons.forEach((button) => {
+      button.setAttribute('aria-pressed', String(controlMode === 'manual' && Number(button.dataset.speed) === boundedSpeed));
+    });
   }
   heroModeText.textContent = controlMode.toUpperCase();
   updateControlAvailability();
@@ -277,6 +282,18 @@ fanOffButton.addEventListener('click', async () => {
     await apiRequest('/api/control', { method: 'POST', body: { token: controlToken, off: true } });
     renderStatus(await getStatus(controlToken));
   } catch (error) { markError(error); }
+});
+
+presetButtons.forEach((button) => {
+  button.addEventListener('click', async () => {
+    if (!connected) return;
+    const speed = Number(button.dataset.speed);
+    presetButtons.forEach((item) => { item.disabled = true; });
+    try {
+      await apiRequest('/api/control', { method: 'POST', body: { token: controlToken, speed } });
+      renderStatus(await getStatus(controlToken));
+    } catch (error) { markError(error); }
+  });
 });
 
 window.addEventListener('pagehide', () => {
