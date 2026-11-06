@@ -19,6 +19,7 @@
   </header>
 
   <main class="app-shell">
+    <a class="page-back" href="index.html"><span aria-hidden="true">←</span> Back to home</a>
     <section class="supervisor-banner" aria-label="Project supervisor"><div class="supervisor-label">PROJECT SUPERVISOR</div><div><h2>U Lin</h2><p>Lecturer <span>·</span> Department of Physics, Mandalay University</p></div></section>
     <section class="electronic-hero">
       <div class="hero-copy">
@@ -61,21 +62,9 @@
       </article>
     </section>
 
-    <section class="system-notes">
-      <div class="note-icon">i</div><div><h2>Simple Connection Setup</h2><p>Power on the ESP32, connect your phone to FanController Wi-Fi, and tap <b>Open ESP32 control page</b> above. Press Claim fan controls on the page that opens. One user can control the fan at a time.</p></div>
-    </section>
-
-    <details class="api-details">
-      <summary>ESP32 firmware connection requirements</summary>
-      <div class="api-content">
-        <p>This page expects the ESP32 web server and API to be on the same origin. The device must enforce the single-controller lock; a page-only lock is not enough.</p>
-        <ul><li><code>GET /api/status</code> returns JSON such as <code>{"temperature":28.6,"fanSpeed":62,"mode":"auto","fanOff":false,"occupied":false,"controlGranted":false}</code>.</li><li><code>POST /api/connect</code> with <code>{"clientId":"…"}</code> claims control. Return a token on success, or HTTP 423 with <code>{"code":"in_use"}</code> if another user holds the lock.</li><li><code>POST /api/status</code> with <code>{"token":"…"}</code> returns status to the controlling client. <code>POST /api/heartbeat</code> and <code>POST /api/disconnect</code> also use the token. Renew the control lease every 6 seconds and expire it after about 20 seconds without a heartbeat.</li><li><code>POST /api/control</code> accepts <code>{"token":"…","mode":"manual"}</code>, <code>{"token":"…","mode":"auto"}</code>, <code>{"token":"…","speed":65}</code>, or <code>{"token":"…","off":true}</code>. Each returns JSON such as <code>{"ok":true}</code>.</li></ul>
-        <p>For reliable control, open the page served by the ESP32 at <code>http://192.168.4.1/</code>. GitHub hosting is not needed for local fan control.</p>
-      </div>
-    </details>
   </main>
 
-  <footer class="app-footer"><a href="index.html">← Back to Group 2 home</a><span>MANDALAY UNIVERSITY · DEPARTMENT OF PHYSICS</span><span>ESP32 · LM35 · 9V DC FAN</span></footer>
+  <footer class="app-footer"><span>MANDALAY UNIVERSITY · DEPARTMENT OF PHYSICS</span><span>ESP32 · LM35 · 9V DC FAN</span></footer>
   <script src="electronic.js"></script>
   <script src="pwa.js"></script>
 </body>

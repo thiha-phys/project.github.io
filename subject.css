@@ -18,3 +18,4 @@
 
 /* White page canvas requested for project reading pages */
 body{background:#fff}
+.page-back{display:inline-flex;align-items:center;gap:8px;margin:18px 0 0;padding:8px 13px;border:1px solid #c8d9eb;border-radius:8px;background:#fff;color:#315b83;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(23,42,66,.06);transition:background .16s,color .16s,transform .16s}.page-back:hover{background:#eff5fb;color:#1b456d;transform:translateX(-2px)}.page-back:focus-visible{outline:2px solid #2c6ca8;outline-offset:3px}

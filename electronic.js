@@ -38,7 +38,7 @@ function setConnectionState(state, message) {
   connectionStatus.dataset.state = state;
   connectionMessage.textContent = message;
   dashboard.dataset.state = state;
-  heroConnectionText.textContent = state === 'connected' ? 'CONNECTED' : state === 'connecting' ? 'CONNECTING' : state === 'occupied' ? 'IN USE' : state === 'available' ? 'AVAILABLE' : state === 'error' ? 'ERROR' : 'OFFLINE';
+  heroConnectionText.textContent = state === 'connected' ? 'CONNECTED' : state === 'connecting' ? 'CONNECTING' : state === 'occupied' ? 'IN USE' : state === 'available' ? 'AVAILABLE' : state === 'preview' ? 'PREVIEW' : state === 'error' ? 'ERROR' : 'OFFLINE';
   connectButton.disabled = state === 'checking' || state === 'connecting' || state === 'occupied' || (!servedByEsp32 && state !== 'connected');
   if (state === 'connected') {
     connectButton.disabled = false;
@@ -306,6 +306,6 @@ updateControlAvailability();
 if (servedByEsp32) {
   checkAvailability();
 } else {
-  setConnectionState('error', 'Preview only. Join FanController Wi-Fi, then tap Open ESP32 control page above for live controls.');
+  setConnectionState('preview', 'Live temperature and fan output are available on the ESP32 page. This hosted preview cannot read the local device.');
   updateControlAvailability();
 }
