@@ -33,3 +33,9 @@ html{scroll-padding-top:25px}.tnp-shell{width:min(1120px,calc(100% - 48px));marg
 .tnp-lead,.objectives li,.prose,.section-intro-copy,.comparison-note p,.references{color:#202421;font-size:15px;line-height:1.85}
 .equation-block>p,.equation-block>small,.term-card p,.model-coefficients p,.result-explanation p,.data-heading p,.conclusions li,.references li{color:#202421;font-size:13px;line-height:1.8}
 @media(max-width:520px){.tnp-hero h1{font-size:clamp(34px,8.7vw,44px)}.tnp-lead,.objectives li,.prose,.section-intro-copy,.comparison-note p,.references{font-size:14px}.equation-block>p,.equation-block>small,.term-card p,.model-coefficients p,.result-explanation p,.data-heading p,.conclusions li,.references li{font-size:12px}}
+
+/* Fine tune: slightly larger reading text, more compact project title */
+.tnp-hero h1{font-size:clamp(36px,4.4vw,54px)}
+.tnp-lead,.objectives li,.prose,.section-intro-copy,.comparison-note p,.references{font-size:16px}
+.equation-block>p,.equation-block>small,.term-card p,.model-coefficients p,.result-explanation p,.data-heading p,.conclusions li,.references li{font-size:14px}
+@media(max-width:520px){.tnp-hero h1{font-size:clamp(32px,8.2vw,41px)}.tnp-lead,.objectives li,.prose,.section-intro-copy,.comparison-note p,.references{font-size:15px}.equation-block>p,.equation-block>small,.term-card p,.model-coefficients p,.result-explanation p,.data-heading p,.conclusions li,.references li{font-size:13px}}
