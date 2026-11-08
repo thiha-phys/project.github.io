@@ -30,3 +30,9 @@
 
 .cmp-hero h1,.cmp-hero h1 em{color:#1f65ad}
 .cmp-hero h1 em{font-style:normal}
+
+/* Readability pass: balanced title and stronger body copy */
+.cmp-hero h1{font-size:clamp(38px,4.8vw,58px)}
+.cmp-lead,.cmp-aim>p,.plain-copy,.objective-list li,.xrd-intro>p,.reference-structure p:not(.cmp-label),.result-interpretation,.references{color:#202421;font-size:15px;line-height:1.85}
+.tcp-panel p:not(.cmp-label),.limitation ul,.phase-list span,.sample-grid small,.reagent-list small,.process-flow li b,.collaboration-note,.parameter-grid p,.setup-strip strong,.equation-card p,.result-card ul,.metrics-row small,.conclusion-list p{color:#202421;font-size:13px;line-height:1.8}
+@media(max-width:560px){.cmp-hero h1{font-size:clamp(34px,8.5vw,43px)}.cmp-lead,.cmp-aim>p,.plain-copy,.objective-list li,.xrd-intro>p,.reference-structure p:not(.cmp-label),.result-interpretation,.references{font-size:14px}.tcp-panel p:not(.cmp-label),.limitation ul,.phase-list span,.sample-grid small,.reagent-list small,.process-flow li b,.collaboration-note,.parameter-grid p,.setup-strip strong,.equation-card p,.result-card ul,.metrics-row small,.conclusion-list p{font-size:12px}}

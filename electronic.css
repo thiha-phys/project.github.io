@@ -40,3 +40,11 @@
 
 .hero-copy h1,.hero-copy h1 em{color:#1f65ad}
 .hero-copy h1 em{font-style:normal}
+
+/* Readability pass for the fan-control project page */
+.hero-copy h1{font-size:clamp(38px,4.8vw,58px)}
+.hero-description,.card-description,.connection-help,.system-notes p,.api-content,.wifi-step small{color:#202421;font-size:14px;line-height:1.85}
+.dashboard-top,.device-indicator,.dashboard-reading small,.dashboard-bottom,.dashboard-mode{color:#202421}
+.dashboard-reading small{font-size:12px}.dashboard-top,.dashboard-bottom,.dashboard-mode{font-size:10px}
+.field-label,.speed-row{font-size:12px}.connection-help,.api-content{font-size:12px}
+@media(max-width:680px){.hero-copy h1{font-size:clamp(35px,8.8vw,46px)}.hero-description,.card-description,.system-notes p,.wifi-step small{font-size:13px}}

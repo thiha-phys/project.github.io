@@ -19,3 +19,9 @@
 
 .category-hero h1,.category-hero h1 em{color:#1f65ad}
 .category-hero h1 em{font-style:normal}
+
+/* Readability pass for the ENP content page */
+.category-hero h1{font-size:clamp(38px,4.8vw,58px)}
+.category-lead,.category-card>p:last-child,.category-aside>p:not(.eyebrow){color:#202421;font-size:15px;line-height:1.85}
+.category-card h2,.category-aside h2{font-size:25px}
+@media(max-width:650px){.category-hero h1{font-size:clamp(34px,8.7vw,44px)}.category-lead,.category-card>p:last-child,.category-aside>p:not(.eyebrow){font-size:14px}.category-card h2,.category-aside h2{font-size:22px}}
