@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mandalay-physics-group-2-v20';
+const CACHE_NAME = 'mandalay-physics-group-2-v21';
 const APP_FILES = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const APP_FILES = [
   './cmp.css',
   './welcome.css',
   './welcome.js',
+  './pwa.js',
   './subject.css',
   './electronic.css',
   './category.css',
