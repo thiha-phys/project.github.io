@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mandalay-physics-group-2-v21';
+const CACHE_NAME = 'mandalay-physics-group-2-v22';
 const APP_FILES = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const APP_FILES = [
   './manifest.webmanifest',
   './assets/mandalay-campus.jpg',
   './logo.png',
+  './logo-192.png',
   './unilogo.png'
 ];
 

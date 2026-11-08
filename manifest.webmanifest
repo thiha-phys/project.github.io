@@ -2,12 +2,19 @@
   "name": "Mandalay University Physics - Group 2",
   "short_name": "MU Physics",
   "description": "Physics project showcase by Group 2 at Mandalay University.",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f6f5ef",
   "theme_color": "#10251e",
   "icons": [
+    {
+      "src": "logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "logo.png",
       "sizes": "512x512",
