@@ -10,14 +10,8 @@ const toast = document.getElementById('toast');
 let installPrompt = null;
 let installTimer = null;
 
-function setInstallMessage(message) {
+function setInstallHint(message) {
   if (installStatus) installStatus.textContent = message;
-  if (toast) {
-    toast.textContent = message;
-    toast.classList.add('show');
-    window.clearTimeout(installTimer);
-    installTimer = window.setTimeout(() => toast.classList.remove('show'), 3600);
-  }
 }
 
 function finishInstall(label = 'Install App') {
@@ -53,27 +47,30 @@ if (installButton) {
     installButton.querySelector('.install-label').textContent = 'App Installed';
     installButton.setAttribute('aria-label', 'App installed');
     installButton.removeAttribute('aria-busy');
-    if (installStatus) installStatus.textContent = 'The app is ready on your device.';
+    if (installStatus) installStatus.textContent = '';
   });
 
   installButton.addEventListener('click', async () => {
     if (installButton.disabled) return;
+    if (installStatus) installStatus.textContent = '';
+    if (toast) toast.classList.remove('show');
     installButton.classList.add('is-loading');
     installButton.disabled = true;
     installButton.setAttribute('aria-busy', 'true');
     installButton.setAttribute('aria-label', 'Preparing app installation');
 
     if (!installPrompt) {
-      setInstallMessage('Checking install options…');
+      const ua = navigator.userAgent;
       window.setTimeout(() => {
         finishInstall();
-        const isAppleMobile = /iphone|ipad|ipod/i.test(navigator.userAgent);
-        if (isAppleMobile) {
-          setInstallMessage('To install: tap Share, then choose Add to Home Screen.');
+        if (/iphone|ipad|ipod/i.test(ua)) {
+          setInstallHint('On iPhone/iPad: Share → Add to Home Screen.');
+        } else if (/android/i.test(ua)) {
+          setInstallHint('Install prompt unavailable. In Chrome, open ⋮ → Install app.');
         } else {
-          setInstallMessage('If available, choose Install app from your browser menu.');
+          setInstallHint('Use your browser menu to install this app.');
         }
-      }, 900);
+      }, 700);
       return;
     }
 
@@ -83,19 +80,16 @@ if (installButton) {
       await promptEvent.prompt();
       const choice = await promptEvent.userChoice;
       if (choice?.outcome === 'accepted') {
-        setInstallMessage('Installing app… Please wait.');
         window.clearTimeout(installTimer);
         installTimer = window.setTimeout(() => {
           finishInstall();
-          setInstallMessage('If installation finished, open the app from your home screen.');
         }, 15000);
       } else {
         finishInstall();
-        setInstallMessage('Installation cancelled. You can try again anytime.');
       }
     } catch {
       finishInstall();
-      setInstallMessage('Could not start installation. Try your browser menu.');
+      setInstallHint('Install prompt unavailable. Try your browser menu.');
     }
   });
 }
