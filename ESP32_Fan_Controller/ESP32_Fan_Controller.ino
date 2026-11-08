@@ -17,7 +17,9 @@
   Safety: GPIO10 is a 3.3 V logic signal for a transistor base resistor only.
   Do not connect the fan directly to an ESP32-C3 GPIO. Fan supply ground and
   ESP32 ground must be common. Verify fan current and transistor ratings before
-  powering the fan; many C828/2SC828 parts are rated for only 50 mA continuous.
+  powering the fan. The H1061 datasheet's 2 A saturation test uses 0.2 A base
+  current; an ESP32 GPIO through 560 ohms cannot supply that. Do not use a hot
+  H1061 with the fan connected until the driver stage and fan current are checked.
 */
 
 #include <WiFi.h>

@@ -26,17 +26,17 @@
   <a class="page-back" href="electronic.html"><span aria-hidden="true">←</span> Back to Electronics</a>
   <div class="topline">GROUP 2 · PHYSICS PROJECT</div>
   <h1>Automatic Fan Speed Controller<br>Circuit Wiring Reference</h1>
-  <p class="intro">ESP32-C3 Super Mini · LM35 · 16×2 I²C LCD · 9V DC fan · C828 NPN low-side driver. Use this as a wiring reference while assembling the hardware.</p>
-  <div class="badges"><span class="badge">ESP32-C3 Super Mini</span><span class="badge">LM35 analog sensor</span><span class="badge">I²C level shifter</span><span class="badge">C828 + 1N4007</span><span class="badge">Regulated 5V and 9V DC</span></div>
+  <p class="intro">ESP32-C3 Super Mini · LM35 · 16×2 I²C LCD · 9V DC fan · H1061 NPN low-side driver. Use this as a wiring reference while assembling the hardware.</p>
+  <div class="badges"><span class="badge">ESP32-C3 Super Mini</span><span class="badge">LM35 analog sensor</span><span class="badge">I²C level shifter</span><span class="badge">H1061 + 1N4007</span><span class="badge">Regulated 5V and 9V DC</span></div>
 
-  <aside class="warning"><strong>Check the fan current before using C828</strong><p>A common 2SC828 datasheet lists 50 mA as the absolute maximum continuous collector current. A small fan can draw more current at startup than its normal running current. Read the fan label or measure its current first. If its startup/running current is near or above the transistor's safe limit, do not use C828 for that fan; substitute a suitably rated higher-current NPN transistor and verify its pinout. Never test by connecting the fan directly to an ESP32 pin.</p></aside>
+  <aside class="warning"><strong>H1061 driver: check base drive and heating</strong><p>The H1061 datasheet gives 4 A as an absolute maximum collector-current rating, but its saturation specification tests 2 A with 0.2 A of base current. An ESP32-C3 GPIO through the currently used 560 Ω resistor supplies only a few milliamps, so that rating does not mean this direct-drive circuit is suitable for a fan. Since your H1061 has become hot, disconnect the 9V fan supply and do not run it this way until the fan current and a suitable base-driver stage are confirmed. Never connect the fan directly to an ESP32 pin.</p></aside>
 
   <section class="panel">
     <div class="panel-head"><span>01 · WIRING OVERVIEW</span><h2>Complete connection map</h2></div>
     <div class="diagram-wrap">
       <svg class="diagram" viewBox="0 0 1120 790" role="img" aria-labelledby="svgtitle svgdesc" xmlns="http://www.w3.org/2000/svg">
         <title id="svgtitle">ESP32-C3 temperature-controlled fan wiring map</title>
-        <desc id="svgdesc">LM35 to GPIO3; I2C LCD through a bidirectional level shifter to GPIO0 and GPIO1; GPIO10 through a resistor to a C828 fan driver; separate 5V and 9V supplies share ground.</desc>
+        <desc id="svgdesc">LM35 to GPIO3; I2C LCD through a bidirectional level shifter to GPIO0 and GPIO1; GPIO10 through a 560 ohm resistor to an H1061 fan driver; separate 5V and 9V supplies share ground.</desc>
         <defs>
           <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3575bb"/></marker>
           <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d03b45"/></marker>
@@ -74,14 +74,14 @@
         <rect x="40" y="548" width="210" height="115" rx="12" class="power"/>
         <text x="62" y="580" class="title">Regulated 9V DC</text><text x="62" y="610" class="sub">+9V → fan positive</text><text x="62" y="638" class="sub">Supply negative → common GND</text>
         <rect x="327" y="548" width="205" height="115" rx="12" class="fanbox"/>
-        <text x="350" y="580" class="title">9V DC fan</text><text x="350" y="610" class="sub">Fan + → +9V rail</text><text x="350" y="638" class="sub">Fan − → C828 collector</text>
+        <text x="350" y="580" class="title">9V DC fan</text><text x="350" y="610" class="sub">Fan + → +9V rail</text><text x="350" y="638" class="sub">Fan − → H1061 collector</text>
         <rect x="738" y="548" width="310" height="115" rx="12" class="board"/>
-        <text x="760" y="580" class="title">C828 · NPN transistor</text><text x="760" y="610" class="sub">Base ← 1kΩ ← GPIO10 / PWM</text><text x="760" y="638" class="sub">Collector ← fan − · Emitter → GND</text>
+        <text x="760" y="580" class="title">H1061 · NPN transistor</text><text x="760" y="610" class="sub">Base ← 560Ω ← GPIO10 / PWM</text><text x="760" y="638" class="sub">Collector ← fan − · Emitter → GND</text>
         <path d="M250 598H318" class="wire-orange" marker-end="url(#arrowOrange)"/><text x="258" y="586" class="pin">+9V</text>
         <path d="M532 620H728" class="wire-black" marker-end="url(#arrowBlue)"/><text x="571" y="608" class="pin">Fan − to C</text>
         <path d="M532 570V530H1048V570" class="wire-orange"/><text x="662" y="524" class="pin">1N4007 · cathode (K) to +9V</text>
         <path d="M532 641V684H1048V641" class="wire-black thin"/><text x="647" y="704" class="pin">Diode anode (A) to fan − / collector</text>
-        <path d="M588 745H904" class="wire-blue" marker-end="url(#arrowBlue)"/><text x="600" y="735" class="pin">GPIO10 → 1kΩ base resistor → B</text>
+        <path d="M588 745H904" class="wire-blue" marker-end="url(#arrowBlue)"/><text x="600" y="735" class="pin">GPIO10 → 560Ω base resistor → B</text>
         <path d="M905 663V745" class="wire-black"/><path d="M892 748H918M897 755H913M902 762H908" class="ground"/><text x="932" y="751" class="pin">E → GND</text>
         <rect x="40" y="684" width="440" height="52" rx="9" fill="#fff" stroke="#e1e8ee"/>
         <text x="56" y="706" class="sub">Optional: 10kΩ from base (B) to emitter (E)/GND</text><text x="56" y="725" class="sub">helps keep the transistor off while the ESP32 boots.</text>
@@ -102,12 +102,12 @@
         <tr><td>ESP32-C3 <code>GPIO0</code></td><td>Level shifter LV1 ↔ HV1 → LCD SDA</td><td>I²C data line (SDA).</td></tr>
         <tr><td>ESP32-C3 <code>GPIO1</code></td><td>Level shifter LV2 ↔ HV2 → LCD SCL</td><td>I²C clock line (SCL).</td></tr>
         <tr><td>Regulated +9V</td><td>Fan positive (+)</td><td>Use a 9V source capable of the fan's startup current.</td></tr>
-        <tr><td>Fan negative (−)</td><td>C828 collector (C)</td><td>Low-side switching connection.</td></tr>
-        <tr><td>ESP32-C3 <code>GPIO10</code></td><td>1kΩ resistor → C828 base (B)</td><td>GPIO drives the transistor base only; never the fan.</td></tr>
-        <tr><td>C828 emitter (E)</td><td>Common GND</td><td>10kΩ base-to-emitter pull-down is optional.</td></tr>
+        <tr><td>Fan negative (−)</td><td>H1061 collector (pin 2 / metal tab)</td><td>Low-side switching connection.</td></tr>
+        <tr><td>ESP32-C3 <code>GPIO10</code></td><td>560Ω resistor → H1061 base (pin 1)</td><td>This is the present prototype connection; the GPIO cannot provide the 0.2 A base current used in the datasheet's 2 A saturation test. Do not assume it can safely switch your fan.</td></tr>
+        <tr><td>H1061 emitter (pin 3)</td><td>Common GND</td><td>10kΩ base-to-emitter pull-down is optional.</td></tr>
         <tr><td>1N4007 cathode (K, banded end)</td><td>Fan positive / +9V</td><td>Flyback diode across the fan.</td></tr>
-        <tr><td>1N4007 anode (A)</td><td>Fan negative / C828 collector</td><td>Diode is reverse-biased during normal fan operation.</td></tr>
-        <tr><td>All supply negative terminals</td><td>ESP32 GND, LM35 pin 3, LCD GND, level-shifter GND and C828 emitter</td><td>One shared ground reference is required.</td></tr>
+        <tr><td>1N4007 anode (A)</td><td>Fan negative / H1061 collector</td><td>Diode is reverse-biased during normal fan operation.</td></tr>
+        <tr><td>All supply negative terminals</td><td>ESP32 GND, LM35 pin 3, LCD GND, level-shifter GND and H1061 emitter</td><td>One shared ground reference is required.</td></tr>
       </tbody>
     </table></div>
   </section>
@@ -117,13 +117,13 @@
     <div class="notes">
       <article class="note"><strong>LM35 orientation</strong><p>For the TI LP TO-92 package, the datasheet shows the pinout from the bottom view: pin 1 +Vs, pin 2 VOUT, pin 3 GND. Confirm the package/view before wiring; other LM35 packages have different pin arrangements.</p></article>
       <article class="note"><strong>I²C voltage levels</strong><p>Use a bidirectional I²C level shifter when the LCD backpack is powered at 5V. ESP32-C3 pins are 3.3V-domain; do not let a 5V pull-up reach SDA/SCL GPIOs. If your LCD/backpack is confirmed 3.3V-compatible, the level shifter may be unnecessary.</p></article>
-      <article class="note"><strong>C828 lead arrangement</strong><p>The drawing names the transistor terminals functionally as B, C and E. A common ST 2SC828 TO-92 datasheet lists pins 1=E, 2=C, 3=B, but it also allows different pin configurations. Check the exact part's datasheet before inserting it.</p></article>
+      <article class="note"><strong>H1061 lead arrangement</strong><p>The referenced H1061 TO-220AB datasheet identifies pin 1 as base, pin 2 as collector (also the metal tab), and pin 3 as emitter. Confirm the markings and datasheet for your exact manufacturer before wiring; H1061 variants may differ.</p></article>
       <article class="note"><strong>Power the board once</strong><p>Feed regulated 5V into the board's marked 5V pin or power it by USB-C; do not connect both sources together unless the exact board's power circuit confirms that is safe. Never apply 5V to a GPIO or the 3V3 pin.</p></article>
-      <article class="note"><strong>Fan type and PWM</strong><p>Check the fan label and current, including startup current. Some 2-wire brushless fans do not respond smoothly to low-side PWM and may need a different control method or a fan designed for PWM control.</p></article>
+      <article class="note"><strong>Fan type, current and transistor heat</strong><p>Check the fan label and startup current. The 560Ω GPIO-to-base connection shown matches the current prototype, but it may not drive H1061 into saturation at useful fan current. A hot transistor indicates excessive dissipation: switch off the fan supply and use a properly designed driver stage before testing again.</p></article>
       <article class="note"><strong>Power supply grounds</strong><p>Keep the +5V and +9V rails separate. Only connect their negative (GND) terminals together. Do not connect +9V to the ESP32, LM35 output, LCD logic pins or GPIOs.</p></article>
     </div>
-    <ol class="steps" style="margin-top:16px"><li>With power disconnected, check the LM35, transistor and diode orientations.</li><li>Power the ESP32/LCD/sensor from regulated 5V first and confirm the LCD and temperature reading.</li><li>Only connect the fan supply after confirming the fan current and choosing a transistor with adequate rating.</li></ol>
-    <div class="source">Datasheet references: <a href="https://www.ti.com/lit/ds/symlink/lm35.pdf" target="_blank" rel="noopener noreferrer">TI LM35</a> · <a href="https://documentation.espressif.com/esp32-c3_datasheet_en.html" target="_blank" rel="noopener noreferrer">Espressif ESP32-C3</a> · <a href="https://hifau.com/uploads/file/pdffiles/2SC828-ST.pdf" target="_blank" rel="noopener noreferrer">2SC828/ST datasheet</a></div>
+    <ol class="steps" style="margin-top:16px"><li>With power disconnected, check the LM35, H1061 and diode orientations.</li><li>Power the ESP32/LCD/sensor from regulated 5V first and confirm the LCD and temperature reading.</li><li>Do not reconnect the fan supply while H1061 overheats; confirm fan current and provide adequate base drive first.</li></ol>
+    <div class="source">Datasheet references: <a href="https://www.ti.com/lit/ds/symlink/lm35.pdf" target="_blank" rel="noopener noreferrer">TI LM35</a> · <a href="https://documentation.espressif.com/esp32-c3_datasheet_en.html" target="_blank" rel="noopener noreferrer">Espressif ESP32-C3</a> · <a href="https://hardware.speccy.org/datasheet/H1061.pdf" target="_blank" rel="noopener noreferrer">H1061 datasheet (pinout and ratings)</a></div>
   </section>
 </main>
 </body>

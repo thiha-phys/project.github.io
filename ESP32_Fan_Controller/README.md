@@ -35,7 +35,7 @@ The sketch uses the 20–45 °C range: fan off at or below 20 °C, then ramps to
 
 - The ESP32-C3 GPIO is 3.3 V logic. GPIO10 must go through the base resistor to the transistor; never connect the fan to a GPIO.
 - The LM35 output goes to GPIO3, not its 5 V supply pin. Join the sensor, ESP32, and fan-supply grounds.
-- A common 2SC828/C828 datasheet lists 50 mA continuous collector current. Check the exact transistor and the fan's startup/current label first. If the fan needs more than the transistor's safe rating, this C828 circuit is not suitable; use a higher-current NPN driver while retaining the no-MOSFET design.
+- The current wiring reference uses H1061 (pin 1 base, pin 2 collector/metal tab, pin 3 emitter for the referenced datasheet). Its 4 A figure is an absolute maximum, not a guarantee that this circuit can drive a fan. The datasheet's 2 A saturation test uses 0.2 A base current; an ESP32-C3 GPIO through 560 Ω supplies only a few milliamps. Since the H1061 has become hot, disconnect the fan supply and verify fan current and a suitable base-driver stage before running it again.
 - Match the fan's rated voltage. A 10 V fan on a 9 V supply may fail to start. A small rectangular 9 V battery is generally not a suitable fan supply.
 - Confirm the transistor's E/C/B pin order for the exact part before wiring; package pinouts can differ.
 - Many I2C LCD backpacks pull SDA/SCL up to 5 V. Use a 3.3 V-compatible backpack or a bidirectional level shifter so the ESP32 pins do not receive 5 V.
