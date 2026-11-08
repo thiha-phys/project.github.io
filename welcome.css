@@ -23,3 +23,9 @@
 
 .institution-marks{position:absolute;z-index:2;top:clamp(18px,3.5vh,36px);left:clamp(22px,5.5vw,82px);right:clamp(22px,5.5vw,82px);display:flex;justify-content:space-between;align-items:center;pointer-events:none}.institution-marks img{display:block;flex:none;width:82px;height:82px;object-fit:contain}
 @media(max-width:580px){.institution-marks{top:20px;left:20px;right:20px}.institution-marks img{width:62px;height:62px}}
+
+.hero-shortcuts{position:absolute;top:calc(100% + 48px);left:0;display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.hero-shortcuts .scroll-cue{position:static}
+.hero-shortcuts .project-areas-cue{margin-left:41px;color:#d6d8cf}
+.cohort-label{display:block;margin-top:5px;font-size:7px!important;letter-spacing:.13em;color:#e8dfc7!important}
+@media(max-width:580px){.hero-shortcuts{top:calc(100% + 31px);gap:11px}.hero-shortcuts .project-areas-cue{margin-left:35px}.cohort-label{font-size:6px!important;letter-spacing:.1em}}
