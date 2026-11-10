@@ -39,6 +39,15 @@
     </section>
 
     <section class="control-grid" aria-label="ESP32 connection and fan controls">
+      <article class="control-card fan-controls" aria-labelledby="fan-controls-heading">
+        <div class="card-heading"><div><p class="eyebrow">FAN SETTINGS</p><h2 id="fan-controls-heading">Control Panel</h2></div><span class="lock-icon" id="lockIcon" aria-hidden="true">⌑</span></div>
+        <div class="mode-buttons" role="group" aria-label="Fan control mode"><button id="autoButton" type="button" aria-pressed="true" disabled>Auto</button><button id="manualButton" type="button" aria-pressed="false" disabled>Manual</button></div>
+        <div class="speed-row"><label for="speedSlider">Manual fan speed</label><strong id="speedLabel">0%</strong></div>
+        <input class="speed-slider" id="speedSlider" type="range" min="0" max="100" step="1" value="0" disabled>
+        <div class="range-labels"><span>0% · STOP</span><span>100% · MAX</span></div>
+        <div class="control-actions"><div class="quick-controls"><button class="off-button" id="fanOffButton" type="button" disabled>Fan Off</button><div class="speed-presets" role="group" aria-label="Quick manual fan speed"><button class="preset-button" type="button" data-speed="25" disabled>25%</button><button class="preset-button" type="button" data-speed="50" disabled>50%</button><button class="preset-button" type="button" data-speed="75" disabled>75%</button><button class="preset-button" type="button" data-speed="100" disabled>100%</button></div></div><span id="manualHint">Connect to the ESP32 to enable controls.</span></div>
+      </article>
+
       <article class="control-card connection-card">
         <div class="card-heading"><div><p class="eyebrow">DEVICE LINK</p><h2>ESP32 Hotspot Connection</h2></div><span class="wifi-icon" aria-hidden="true">⌁</span></div>
         <p class="card-description">The phone joins the ESP32's Wi-Fi first. The button below only claims fan-control access; it does not change your phone's Wi-Fi connection.</p>
@@ -50,15 +59,6 @@
         <div class="connect-row"><button class="primary-button" id="connectButton" type="button">Claim fan controls <span>↗</span></button></div>
         <div class="connection-status" id="connectionStatus" data-state="disconnected" role="status" aria-live="polite"><i></i><span id="connectionMessage">Not connected</span></div>
         <p class="connection-help">Join FanController Wi-Fi before opening the device page. The ESP32 hosts the live fan controls locally; no API key or internet is needed.</p>
-      </article>
-
-      <article class="control-card fan-controls" aria-labelledby="fan-controls-heading">
-        <div class="card-heading"><div><p class="eyebrow">FAN SETTINGS</p><h2 id="fan-controls-heading">Control Panel</h2></div><span class="lock-icon" id="lockIcon" aria-hidden="true">⌑</span></div>
-        <div class="mode-buttons" role="group" aria-label="Fan control mode"><button id="autoButton" type="button" aria-pressed="true" disabled>Auto</button><button id="manualButton" type="button" aria-pressed="false" disabled>Manual</button></div>
-        <div class="speed-row"><label for="speedSlider">Manual fan speed</label><strong id="speedLabel">0%</strong></div>
-        <input class="speed-slider" id="speedSlider" type="range" min="0" max="100" step="1" value="0" disabled>
-        <div class="range-labels"><span>0% · STOP</span><span>100% · MAX</span></div>
-        <div class="control-actions"><div class="quick-controls"><button class="off-button" id="fanOffButton" type="button" disabled>Fan Off</button><div class="speed-presets" role="group" aria-label="Quick manual fan speed"><button class="preset-button" type="button" data-speed="25" disabled>25%</button><button class="preset-button" type="button" data-speed="50" disabled>50%</button><button class="preset-button" type="button" data-speed="75" disabled>75%</button><button class="preset-button" type="button" data-speed="100" disabled>100%</button></div></div><span id="manualHint">Connect to the ESP32 to enable controls.</span></div>
       </article>
     </section>
 
