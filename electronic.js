@@ -61,7 +61,7 @@ function updateControlAvailability() {
   const isManual = controlMode === 'manual';
   speedSlider.disabled = !connected || !isManual;
   fanOffButton.disabled = !connected || !isManual;
-  presetButtons.forEach((button) => { button.disabled = !connected; });
+  presetButtons.forEach((button) => { button.disabled = !connected || !isManual; });
   autoButton.setAttribute('aria-pressed', String(!isManual));
   manualButton.setAttribute('aria-pressed', String(isManual));
   manualHint.textContent = !connected
@@ -287,7 +287,7 @@ fanOffButton.addEventListener('click', async () => {
 
 presetButtons.forEach((button) => {
   button.addEventListener('click', async () => {
-    if (!connected) return;
+    if (!connected || controlMode !== 'manual') return;
     const speed = Number(button.dataset.speed);
     presetButtons.forEach((item) => { item.disabled = true; });
     try {
