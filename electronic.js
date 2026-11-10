@@ -36,6 +36,7 @@ function setConnectionState(state, message) {
   connectButton.hidden = !servedByEsp32;
   connectionState = state;
   connectionStatus.dataset.state = state;
+  connectButton.dataset.state = state;
   connectionMessage.textContent = message;
   dashboard.dataset.state = state;
   heroConnectionText.textContent = state === 'connected' ? 'CONNECTED' : state === 'connecting' ? 'CONNECTING' : state === 'occupied' ? 'IN USE' : state === 'available' ? 'AVAILABLE' : state === 'preview' ? 'PREVIEW' : state === 'error' ? 'ERROR' : 'OFFLINE';

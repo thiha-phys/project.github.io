@@ -41,6 +41,11 @@
 .hero-copy h1,.hero-copy h1 em{color:#1f65ad}
 .hero-copy h1 em{font-style:normal}
 
+.connect-row .primary-button{background:#c2183a}
+.connect-row .primary-button:hover:not(:disabled){background:#a81431}
+.connect-row .primary-button[data-state="connected"]{background:#2f7d4b}
+.connect-row .primary-button[data-state="connected"]:hover:not(:disabled){background:#25663c}
+
 /* Readability pass for the fan-control project page */
 .hero-copy h1{font-size:clamp(38px,4.8vw,58px)}
 .hero-description,.card-description,.connection-help,.system-notes p,.api-content,.wifi-step small{color:#202421;font-size:14px;line-height:1.85}
