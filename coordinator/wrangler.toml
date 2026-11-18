@@ -5,6 +5,7 @@ compatibility_date = "2026-11-19"
 [vars]
 CONTROL_HISTORY_RETENTION_DAYS = "30"
 
+# Must match the Durable Object binding declared in the Pages wrangler.toml.
 [[durable_objects.bindings]]
 name = "FAN_COORDINATOR"
 class_name = "FanControlCoordinator"

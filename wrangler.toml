@@ -11,7 +11,9 @@ migrations_dir = "migrations"
 [[durable_objects.bindings]]
 name = "FAN_COORDINATOR"
 class_name = "FanControlCoordinator"
+# This is a Durable Object binding to the separately deployed coordinator Worker,
+# not a Service Binding. Deploy coordinator/wrangler.toml before deploying Pages.
 script_name = "mu-physics-fan-coordinator"
 
-# Bind a separately deployed Durable Object worker in the Cloudflare Pages
-# dashboard as FAN_COORDINATOR. See DEPLOYMENT.md.
+# Keep the Pages binding's script_name and class_name aligned with
+# coordinator/wrangler.toml. See DEPLOYMENT.md for the required deployment order.

@@ -1,23 +1,30 @@
 const LEASE_MS = 30_000;
 const REQUEST_TTL_MS = 15 * 60_000;
 const DEFAULT_HISTORY_RETENTION_DAYS = 30;
-const CONTROL_STATE_KEYS = new Set(['approvedUserId', 'lease']);
-
 export class FanControlCoordinator {
   constructor(ctx, env = {}) {
-    this.ctx = ctx;
+    this.ready = ctx.blockConcurrencyWhile(async () => {
+      await ctx.storage.delete('state');
+      await ctx.storage.delete('requests');
+    });
     const retentionDays = Number(env.CONTROL_HISTORY_RETENTION_DAYS);
     this.historyRetentionMs = Number.isInteger(retentionDays) && retentionDays >= 1 && retentionDays <= 3650
       ? retentionDays * 24 * 60 * 60_000
       : DEFAULT_HISTORY_RETENTION_DAYS * 24 * 60 * 60_000;
-    this.bridge = ctx.getWebSockets().find((socket) => socket.deserializeAttachment()?.role === 'bridge') || null;
-    this.bridgeConnected = Boolean(this.bridge);
+    this.bridge = null;
+    this.bridgeConnected = false;
+    this.webSockets = new Set();
+    this.socketMetadata = new WeakMap();
+    this.requests = [];
+    this.approvedUserId = null;
+    this.lease = null;
     this.telemetry = null;
     this.telemetryAt = 0;
     this.pendingCommands = new Map();
   }
 
   async fetch(request) {
+    await this.ready;
     const url = new URL(request.url);
     if (url.pathname === '/bridge') return this.acceptBridge(request);
     if (url.pathname === '/live') return this.acceptAudience(request);
@@ -25,88 +32,94 @@ export class FanControlCoordinator {
     let body;
     try { body = await request.json(); } catch { return Response.json({ error: 'Invalid JSON.' }, { status: 400 }); }
     const now = Date.now();
-    const state = await this.readState();
+    this.expireLease(now);
+    this.pruneRequests(now);
+    this.reconcileControlState();
 
     if (url.pathname === '/internal/status') {
       const fresh = this.telemetryAt && now - this.telemetryAt < 8_000;
       return Response.json({ online: Boolean(fresh), ...(fresh ? this.telemetry : {}), receivedAt: fresh ? this.telemetryAt : null,
         bridgeConnected: this.bridgeConnected,
-        controllerName: state.lease?.fullName || null, occupied: Boolean(state.lease && state.lease.expiresAt > now) });
+        controllerName: this.lease?.fullName || null, occupied: Boolean(this.lease && this.lease.expiresAt > now) });
     }
     if (url.pathname === '/internal/request') {
-      const requests = await this.readRequests(now, state);
-      const existing = requests.find((item) => item.userId === body.userId && item.status === 'pending' && now - item.at < REQUEST_TTL_MS);
+      const existing = this.requests.find((item) => item.userId === body.userId && item.status === 'pending' && now - item.at < REQUEST_TTL_MS);
       if (existing) return Response.json(existing);
       const item = { id: crypto.randomUUID(), userId: body.userId, fullName: body.fullName, email: body.email, at: now, status: 'pending' };
-      requests.unshift(item);
-      await this.ctx.storage.put('requests', requests.slice(0, 100));
+      this.requests.unshift(item);
+      this.requests = this.requests.slice(0, 100);
       return Response.json(item, { status: 201 });
     }
     if (url.pathname === '/internal/request-status') {
-      const requests = await this.readRequests(now, state);
-      return Response.json(requests.find((item) => item.userId === body.userId) || { status: 'none' });
+      return Response.json(this.requests.find((item) => item.userId === body.userId) || { status: 'none' });
     }
     if (url.pathname === '/internal/presenter/requests') {
       if (!request.headers.get('x-presenter-user')) return Response.json({ error: 'Presenter access required.' }, { status: 403 });
-      const requests = await this.readRequests(now, state);
-      return Response.json({ requests: requests.filter((item) => item.status === 'pending' || item.status === 'approved') });
+      return Response.json({ requests: this.requests.filter((item) => item.status === 'pending' || item.status === 'approved') });
     }
     if (url.pathname === '/internal/presenter/decision') {
       if (!body.presenterId) return Response.json({ error: 'Presenter access required.' }, { status: 403 });
-      const requests = await this.readRequests(now, state);
-      const item = requests.find((row) => row.id === body.requestId || row.userId === body.userId);
+      const item = this.requests.find((row) => row.id === body.requestId || row.userId === body.userId);
       if (body.action === 'take-control') {
         this.sendBridgeSignal('lease-ended');
-        state.lease = null;
-        state.approvedUserId = null;
-        if (item?.status === 'approved') item.status = 'revoked';
-        await this.ctx.storage.put('requests', requests);
-        await this.ctx.storage.put('state', state);
+        this.lease = null;
+        this.approvedUserId = null;
+        this.requests.forEach((row) => { if (row.status === 'approved') row.status = 'revoked'; });
+        this.rejectPendingCommands('Control permission revoked by the presenter.');
         return Response.json({ ok: true });
       }
       if (!item) return Response.json({ error: 'Control request not found.' }, { status: 404 });
       if (body.action === 'approve') {
-        if (state.approvedUserId && state.approvedUserId !== item.userId) return Response.json({ error: 'Another user already has approved control. Revoke it first.' }, { status: 409 });
-        requests.forEach((row) => { if (row.status === 'approved' && row.userId !== item.userId) row.status = 'revoked'; });
+        if (this.approvedUserId && this.approvedUserId !== item.userId) return Response.json({ error: 'Another user already has approved control. Revoke it first.' }, { status: 409 });
+        this.requests.forEach((row) => { if (row.status === 'approved' && row.userId !== item.userId) row.status = 'revoked'; });
         item.status = 'approved';
-        state.approvedUserId = item.userId;
+        this.approvedUserId = item.userId;
       } else if (body.action === 'reject') {
         item.status = 'rejected';
       } else if (body.action === 'revoke') {
         item.status = 'revoked';
-        if (state.approvedUserId === item.userId) state.approvedUserId = null;
-        if (state.lease?.userId === item.userId) {
+        if (this.approvedUserId === item.userId) this.approvedUserId = null;
+        if (this.lease?.userId === item.userId) {
           this.sendBridgeSignal('lease-ended');
-          state.lease = null;
+          this.lease = null;
+          this.rejectPendingCommands('Control permission revoked by the presenter.');
         }
       }
-      await this.ctx.storage.put('requests', requests);
-      await this.ctx.storage.put('state', state);
       return Response.json({ ok: true, request: item });
     }
     if (url.pathname === '/internal/claim') {
-      if (!body.isPresenter && state.approvedUserId !== body.userId) return Response.json({ error: 'Presenter approval is required.' }, { status: 403 });
-      if (!body.isPresenter && state.lease && state.lease.expiresAt > now && state.lease.userId !== body.userId) return Response.json({ error: 'Another user currently controls the fan.' }, { status: 423 });
-      const leaseToken = state.lease?.userId === body.userId ? state.lease.token : crypto.randomUUID() + crypto.randomUUID();
-      state.lease = { userId: body.userId, fullName: body.fullName, token: leaseToken, expiresAt: now + LEASE_MS };
-      await this.ctx.storage.put('state', state);
-      await this.ctx.storage.setAlarm(now + LEASE_MS);
+      const isPresenter = Boolean(body.isPresenter && body.userId);
+      if (!isPresenter && (this.approvedUserId !== body.userId || !this.hasApprovedRequest(body.userId))) {
+        return Response.json({ error: 'Presenter approval is required.' }, { status: 403 });
+      }
+      if (!isPresenter && this.lease && this.lease.userId !== body.userId) return Response.json({ error: 'Another user currently controls the fan.' }, { status: 423 });
+      if (isPresenter) {
+        if (this.lease && this.lease.userId !== body.userId) {
+          this.sendBridgeSignal('lease-ended');
+          this.rejectPendingCommands('Presenter took control.');
+        }
+        this.requests.forEach((row) => { if (row.status === 'approved') row.status = 'revoked'; });
+        this.approvedUserId = null;
+      }
+      const leaseToken = this.lease?.userId === body.userId ? this.lease.token : crypto.randomUUID() + crypto.randomUUID();
+      this.lease = { userId: body.userId, fullName: body.fullName, token: leaseToken, expiresAt: now + LEASE_MS, isPresenter };
       this.sendBridgeSignal('lease-active');
       return Response.json({ ok: true, leaseToken, expiresInMs: LEASE_MS });
     }
     if (url.pathname === '/internal/heartbeat') {
-      if (!state.lease || state.lease.userId !== body.userId || state.lease.token !== body.leaseToken || state.lease.expiresAt <= now) {
+      if (!this.lease || this.lease.userId !== body.userId || this.lease.token !== body.leaseToken || this.lease.expiresAt <= now
+        || (!this.lease.isPresenter && (this.approvedUserId !== body.userId || !this.hasApprovedRequest(body.userId)))) {
         return Response.json({ error: 'Control permission has expired.' }, { status: 403 });
       }
-      state.lease.expiresAt = now + LEASE_MS;
-      await this.ctx.storage.put('state', state);
-      await this.ctx.storage.setAlarm(now + LEASE_MS);
+      this.lease.expiresAt = now + LEASE_MS;
       this.sendBridgeSignal('lease-active');
       return Response.json({ ok: true, expiresInMs: LEASE_MS });
     }
     if (url.pathname === '/internal/command') {
       const isPresenter = Boolean(body.isPresenter && body.userId);
-      const isLeaseOwner = Boolean(state.lease && state.lease.userId === body.userId && state.lease.token === body.leaseToken && state.lease.expiresAt > now);
+      const isLeaseOwner = Boolean(this.lease && !this.lease.isPresenter && this.lease.userId === body.userId
+        && this.lease.token === body.leaseToken && this.lease.expiresAt > now
+        && this.approvedUserId === body.userId && this.hasApprovedRequest(body.userId));
       if (!isPresenter && !isLeaseOwner) return Response.json({ error: 'You are not authorized to control the fan.' }, { status: 403 });
       if (!this.bridge || !this.bridgeConnected) return Response.json({ error: 'The hardware bridge is offline.' }, { status: 503 });
       const commandId = crypto.randomUUID();
@@ -114,30 +127,28 @@ export class FanControlCoordinator {
       catch { return Response.json({ error: 'The hardware bridge did not confirm the command.' }, { status: 504 }); }
     }
     if (url.pathname === '/internal/release-user') {
-      if (state.lease?.userId === body.userId) {
+      if (this.lease?.userId === body.userId) {
         this.sendBridgeSignal('lease-ended');
-        state.lease = null;
+        this.lease = null;
+        this.rejectPendingCommands('Control owner logged out.');
       }
-      if (state.approvedUserId === body.userId) {
-        state.approvedUserId = null;
-        const requests = await this.ctx.storage.get('requests') || [];
-        requests.forEach((item) => { if (item.userId === body.userId && item.status === 'approved') item.status = 'revoked'; });
-        await this.ctx.storage.put('requests', requests);
+      if (this.approvedUserId === body.userId) {
+        this.approvedUserId = null;
+        this.requests.forEach((item) => { if (item.userId === body.userId && item.status === 'approved') item.status = 'revoked'; });
       }
-      await this.ctx.storage.put('state', state);
       return Response.json({ ok: true });
     }
     if (url.pathname === '/internal/bridge-release') {
-      if (this.bridge?.deserializeAttachment()?.userId === body.userId) {
+      if (this.bridge && this.socketMetadata.get(this.bridge)?.userId === body.userId) {
         const bridge = this.bridge;
+        this.sendBridgeSignal('lease-ended');
         this.bridge = null;
         this.bridgeConnected = false;
+        this.lease = null;
+        this.approvedUserId = null;
+        this.requests.forEach((item) => { if (item.status === 'approved') item.status = 'revoked'; });
         this.clearTelemetry();
-        for (const [id, pending] of this.pendingCommands) {
-          clearTimeout(pending.timer);
-          pending.reject(new Error('Presenter logged out.'));
-          this.pendingCommands.delete(id);
-        }
+        this.rejectPendingCommands('Presenter logged out.');
         bridge.close(1000, 'Presenter logged out.');
       }
       return Response.json({ ok: true });
@@ -145,73 +156,106 @@ export class FanControlCoordinator {
     if (url.pathname === '/internal/presenter/reset') {
       if (!body.presenterId) return Response.json({ error: 'Presenter access required.' }, { status: 403 });
       this.sendBridgeSignal('lease-ended');
-      state.lease = null;
-      state.approvedUserId = null;
+      this.lease = null;
+      this.approvedUserId = null;
       this.clearTelemetry();
-      await this.ctx.storage.put('requests', []);
-      await this.ctx.storage.put('state', state);
+      this.requests = [];
+      this.rejectPendingCommands('Temporary seminar state was reset.');
       return Response.json({ ok: true, message: 'Temporary control state cleared; user accounts were retained.' });
     }
     return Response.json({ error: 'Unknown coordinator operation.' }, { status: 404 });
   }
 
-  async readState() {
-    const stored = await this.ctx.storage.get('state');
-    if (!stored) return { approvedUserId: null, lease: null };
-    const state = {
-      approvedUserId: stored.approvedUserId ?? null,
-      lease: stored.lease ?? null,
-    };
-    if (Object.keys(stored).some((key) => !CONTROL_STATE_KEYS.has(key))) {
-      await this.ctx.storage.put('state', state);
-    }
-    return state;
+  pruneRequests(now) {
+    const retentionCutoff = now - this.historyRetentionMs;
+    this.requests = this.requests.filter((item) => {
+      if (item.status === 'pending' && now - item.at >= REQUEST_TTL_MS) item.status = 'expired';
+      const keepActiveApproval = item.status === 'approved' && item.userId === this.approvedUserId;
+      return item.at >= retentionCutoff || keepActiveApproval;
+    });
   }
 
-  async readRequests(now, state) {
-    const requests = await this.ctx.storage.get('requests') || [];
-    const retentionCutoff = now - this.historyRetentionMs;
-    let changed = false;
-    const retained = requests.filter((item) => {
-      if (item.status === 'pending' && now - item.at >= REQUEST_TTL_MS) {
-        item.status = 'expired';
-        changed = true;
-      }
-      const keepActiveApproval = item.status === 'approved' && item.userId === state.approvedUserId;
-      if (item.at < retentionCutoff && !keepActiveApproval) {
-        changed = true;
-        return false;
-      }
-      return true;
+  hasApprovedRequest(userId) {
+    return this.requests.some((item) => item.userId === userId && item.status === 'approved');
+  }
+
+  reconcileControlState() {
+    if (this.approvedUserId && !this.hasApprovedRequest(this.approvedUserId)) this.approvedUserId = null;
+    if (!this.lease) return;
+    const leaseIsValid = this.lease.userId && this.lease.token && Number.isFinite(this.lease.expiresAt);
+    if (!leaseIsValid || (!this.lease.isPresenter
+      && (this.approvedUserId !== this.lease.userId || !this.hasApprovedRequest(this.lease.userId)))) {
+      this.lease = null;
+      this.approvedUserId = null;
+      this.requests.forEach((item) => { if (item.status === 'approved') item.status = 'expired'; });
+      this.sendBridgeSignal('lease-ended');
+      this.rejectPendingCommands('Control state is missing or invalid.');
+    }
+  }
+
+  expireLease(now) {
+    if (!this.lease) return;
+    if (!this.lease.userId || !this.lease.token || !Number.isFinite(this.lease.expiresAt)) {
+      this.lease = null;
+      this.approvedUserId = null;
+      this.requests.forEach((item) => { if (item.status === 'approved') item.status = 'expired'; });
+      this.sendBridgeSignal('lease-ended');
+      this.rejectPendingCommands('Control state is invalid.');
+      return;
+    }
+    if (this.lease.expiresAt > now) return;
+    const userId = this.lease.userId;
+    this.lease = null;
+    if (this.approvedUserId === userId) this.approvedUserId = null;
+    this.requests.forEach((item) => { if (item.userId === userId && item.status === 'approved') item.status = 'expired'; });
+    this.sendBridgeSignal('lease-ended');
+    this.rejectPendingCommands('Control lease expired.');
+  }
+
+  attachWebSocket(socket, metadata) {
+    socket.accept();
+    this.webSockets.add(socket);
+    this.socketMetadata.set(socket, metadata);
+    socket.addEventListener('message', (event) => {
+      this.webSocketMessage(socket, event.data).catch((error) => {
+        console.error('Could not process a coordinator WebSocket message:', error);
+      });
     });
-    if (changed) await this.ctx.storage.put('requests', retained);
-    return retained;
+    socket.addEventListener('close', () => {
+      this.webSocketClose(socket).catch((error) => {
+        console.error('Could not process a coordinator WebSocket close:', error);
+      });
+    });
+    socket.addEventListener('error', () => {
+      this.webSocketError(socket).catch((error) => {
+        console.error('Could not process a coordinator WebSocket error:', error);
+      });
+    });
   }
 
   async acceptBridge(request) {
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('WebSocket required.', { status: 426 });
-    if (this.bridge) this.bridge.close(1012, 'A new presenter bridge connected.');
+    const presenterUserId = new URL(request.url).searchParams.get('presenterUserId');
+    if (!presenterUserId) return new Response('Presenter authentication required.', { status: 403 });
+    if (this.bridge) {
+      this.sendBridgeSignal('lease-ended');
+      this.bridge.close(1012, 'A new presenter bridge connected.');
+      this.bridge = null;
+      this.bridgeConnected = false;
+      this.lease = null;
+      this.approvedUserId = null;
+      this.requests.forEach((item) => { if (item.status === 'approved') item.status = 'revoked'; });
+      this.rejectPendingCommands('Bridge connection replaced.');
+    }
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
-    this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ role: 'bridge', userId: new URL(request.url).searchParams.get('presenterUserId') });
+    this.attachWebSocket(server, { role: 'bridge', userId: presenterUserId });
     this.bridge = server;
-    const state = await this.readState();
     this.bridgeConnected = true;
-    if (state.lease && state.lease.expiresAt <= Date.now()) {
-      const expiredUserId = state.lease.userId;
-      state.lease = null;
-      if (state.approvedUserId === expiredUserId) {
-        const requests = await this.ctx.storage.get('requests') || [];
-        requests.forEach((item) => { if (item.userId === expiredUserId && item.status === 'approved') item.status = 'expired'; });
-        state.approvedUserId = null;
-        await this.ctx.storage.put('requests', requests);
-      }
-    }
-    if (state.lease === null) await this.ctx.storage.put('state', state);
+    this.clearTelemetry();
     server.send(JSON.stringify({ type: 'bridge-ready' }));
-    if (state.lease) server.send(JSON.stringify({ type: 'lease-active' }));
+    server.send(JSON.stringify({ type: 'lease-ended' }));
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -220,8 +264,7 @@ export class FanControlCoordinator {
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
-    this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ role: 'audience' });
+    this.attachWebSocket(server, { role: 'audience' });
     const fresh = this.telemetryAt && Date.now() - this.telemetryAt < 8_000;
     if (fresh) server.send(JSON.stringify({ type: 'telemetry', data: this.telemetry }));
     else server.send(JSON.stringify({ type: 'telemetry', online: false }));
@@ -230,8 +273,8 @@ export class FanControlCoordinator {
 
   broadcastTelemetry() {
     const message = JSON.stringify({ type: 'telemetry', data: this.telemetry });
-    for (const socket of this.ctx.getWebSockets()) {
-      if (socket.deserializeAttachment()?.role !== 'audience') continue;
+    for (const socket of this.webSockets) {
+      if (this.socketMetadata.get(socket)?.role !== 'audience') continue;
       try {
         socket.send(message);
       } catch (error) {
@@ -248,8 +291,8 @@ export class FanControlCoordinator {
 
   broadcastOffline() {
     const message = JSON.stringify({ type: 'telemetry', online: false });
-    for (const socket of this.ctx.getWebSockets()) {
-      if (socket.deserializeAttachment()?.role !== 'audience') continue;
+    for (const socket of this.webSockets) {
+      if (this.socketMetadata.get(socket)?.role !== 'audience') continue;
       try {
         socket.send(message);
       } catch (error) {
@@ -276,8 +319,21 @@ export class FanControlCoordinator {
     });
   }
 
+  rejectPendingCommands(reason) {
+    for (const [id, pending] of this.pendingCommands) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error(reason));
+      this.pendingCommands.delete(id);
+    }
+  }
+
   async webSocketMessage(socket, message) {
-    const role = socket.deserializeAttachment()?.role;
+    const role = this.socketMetadata.get(socket)?.role;
+    if (!role) return;
+    this.expireLease(Date.now());
+    this.pruneRequests(Date.now());
+    this.reconcileControlState();
+    if (role === 'bridge' && this.bridge !== socket) return;
     let data;
     try { data = JSON.parse(typeof message === 'string' ? message : new TextDecoder().decode(message)); } catch { return; }
     if (role === 'audience') {
@@ -309,33 +365,20 @@ export class FanControlCoordinator {
   }
 
   async webSocketClose(socket) {
-    if (socket.deserializeAttachment()?.role !== 'bridge') return;
-    if (this.bridge !== socket) return;
+    const role = this.socketMetadata.get(socket)?.role;
+    this.webSockets.delete(socket);
+    this.socketMetadata.delete(socket);
+    if (role !== 'bridge' || this.bridge !== socket) return;
     this.bridge = null;
     this.bridgeConnected = false;
+    this.lease = null;
+    this.approvedUserId = null;
+    this.requests.forEach((item) => { if (item.status === 'approved') item.status = 'revoked'; });
     this.clearTelemetry();
-    for (const [id, pending] of this.pendingCommands) {
-      clearTimeout(pending.timer); pending.reject(new Error('bridge disconnected')); this.pendingCommands.delete(id);
-    }
+    this.rejectPendingCommands('Bridge disconnected.');
   }
 
   async webSocketError(socket) { await this.webSocketClose(socket); }
-
-  async alarm() {
-    const state = await this.readState();
-    if (state.lease && state.lease.expiresAt <= Date.now()) {
-      const userId = state.lease.userId;
-      this.sendBridgeSignal('lease-ended');
-      state.lease = null;
-      if (state.approvedUserId === userId) {
-        state.approvedUserId = null;
-        const requests = await this.ctx.storage.get('requests') || [];
-        requests.forEach((item) => { if (item.userId === userId && item.status === 'approved') item.status = 'expired'; });
-        await this.ctx.storage.put('requests', requests);
-      }
-      await this.ctx.storage.put('state', state);
-    }
-  }
 }
 
 export default { async fetch() { return new Response('Not found.', { status: 404 }); } };

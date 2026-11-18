@@ -349,20 +349,56 @@ test('presenter can reject a request, and presenter priority preempts a temporar
 
 class MemoryStorage {
   values = new Map();
-  writes = [];
-  async get(key) { return this.values.get(key); }
+  calls = [];
+  async get(key) { this.calls.push({ operation: 'get', key }); return this.values.get(key); }
   async put(key, value) {
-    const snapshot = structuredClone(value);
-    this.values.set(key, snapshot);
-    this.writes.push({ key, value: snapshot });
+    this.calls.push({ operation: 'put', key });
+    this.values.set(key, structuredClone(value));
   }
-  async setAlarm(value) { this.alarmAt = value; }
+  async delete(key) {
+    this.calls.push({ operation: 'delete', key });
+    return this.values.delete(key);
+  }
+  async setAlarm() { this.calls.push({ operation: 'setAlarm' }); }
 }
 
 function coordinatorCtx() {
   const storage = new MemoryStorage();
-  return { storage, getWebSockets: () => [], acceptWebSocket() {} };
+  return { storage, blockConcurrencyWhile: (callback) => callback() };
 }
+
+function attachMockSocket(coordinator, socket, metadata) {
+  coordinator.webSockets.add(socket);
+  coordinator.socketMetadata.set(socket, metadata);
+  if (metadata.role === 'bridge') {
+    coordinator.bridge = socket;
+    coordinator.bridgeConnected = true;
+  }
+}
+
+test('coordinator WebSocket connections are held only in instance memory', async () => {
+  const ctx = coordinatorCtx();
+  const coordinator = new FanControlCoordinator(ctx);
+  await coordinator.ready;
+  const listeners = new Map();
+  let acceptCount = 0;
+  const socket = {
+    accept() { acceptCount += 1; },
+    addEventListener(type, listener) { listeners.set(type, listener); },
+    send() {},
+  };
+  coordinator.attachWebSocket(socket, { role: 'audience' });
+  assert.equal(acceptCount, 1);
+  assert.equal(coordinator.webSockets.has(socket), true);
+  assert.equal(listeners.has('message'), true);
+  assert.equal(listeners.has('close'), true);
+
+  const restartedCoordinator = new FanControlCoordinator(ctx);
+  await restartedCoordinator.ready;
+  assert.equal(restartedCoordinator.webSockets.size, 0);
+  assert.equal(ctx.storage.values.size, 0);
+  assert.equal(ctx.storage.calls.every((call) => call.operation === 'delete'), true);
+});
 
 async function coordinatorPost(coordinator, path, body, headers = {}) {
   return coordinator.fetch(new Request(`https://do.test${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) }));
@@ -373,10 +409,9 @@ test('presenter approval, single-controller lease, revocation, and reset preserv
   await createAccount(db);
   const ctx = coordinatorCtx();
   const bridgeMessages = [];
-  const bridge = { deserializeAttachment: () => ({ role: 'bridge' }), send: (message) => bridgeMessages.push(JSON.parse(message)) };
-  ctx.getWebSockets = () => [bridge];
-  await ctx.storage.put('state', { approvedUserId: null, lease: null });
+  const bridge = { send: (message) => bridgeMessages.push(JSON.parse(message)) };
   const coordinator = new FanControlCoordinator(ctx);
+  attachMockSocket(coordinator, bridge, { role: 'bridge', userId: 'presenter' });
   const created = await coordinatorPost(coordinator, '/internal/request', { userId: 'u1', fullName: 'User One', email: 'one@example.com' });
   const requestItem = await created.json();
   const hidden = await coordinatorPost(coordinator, '/internal/claim', { userId: 'u1', fullName: 'User One', isPresenter: false });
@@ -397,6 +432,10 @@ test('presenter approval, single-controller lease, revocation, and reset preserv
   const reset = await coordinatorPost(coordinator, '/internal/presenter/reset', { presenterId: 'presenter' });
   assert.equal(reset.status, 200);
   assert.equal(db.users.size, 1);
+  assert.equal(coordinator.approvedUserId, null);
+  assert.equal(coordinator.lease, null);
+  assert.deepEqual(coordinator.requests, []);
+  assert.equal(ctx.storage.calls.every((call) => call.operation === 'delete'), true);
 });
 
 test('presenter access is assigned only from the server-side user ID setting', async () => {
@@ -442,20 +481,21 @@ test('bridge WebSocket is restricted to the same-origin presenter session', asyn
 test('presenter logout closes only the authenticated bridge connection', async () => {
   const closeCalls = [];
   const bridge = {
-    deserializeAttachment: () => ({ role: 'bridge', userId: 'presenter-id' }),
     close: (...args) => closeCalls.push(args),
+    send() {},
   };
   const ctx = coordinatorCtx();
-  ctx.getWebSockets = () => [bridge];
-  await ctx.storage.put('state', { approvedUserId: null, lease: null });
   const coordinator = new FanControlCoordinator(ctx);
+  attachMockSocket(coordinator, bridge, { role: 'bridge', userId: 'presenter-id' });
   const released = await coordinatorPost(coordinator, '/internal/bridge-release', { userId: 'other-id' });
   assert.equal(released.status, 200);
   assert.equal(closeCalls.length, 0);
   const presenterRelease = await coordinatorPost(coordinator, '/internal/bridge-release', { userId: 'presenter-id' });
   assert.equal(presenterRelease.status, 200);
   assert.equal(closeCalls.length, 1);
-  assert.deepEqual(ctx.storage.values.get('state'), { approvedUserId: null, lease: null });
+  assert.equal(coordinator.bridge, null);
+  assert.equal(coordinator.lease, null);
+  assert.equal(ctx.storage.calls.every((call) => call.operation === 'delete'), true);
 });
 
 test('authenticated audience WebSockets are forwarded to the live-only coordinator route', async () => {
@@ -476,63 +516,110 @@ test('authenticated audience WebSockets are forwarded to the live-only coordinat
   assert.equal(forwardedPath, '/live');
 });
 
-test('coordinator broadcasts live telemetry without persisting it and starts offline after restart', async () => {
-  const sent = [];
-  const audienceSocket = { deserializeAttachment: () => ({ role: 'audience' }), send: (message) => sent.push(JSON.parse(message)) };
+test('coordinator keeps temporary state in memory, purges legacy keys, and resets after restart', async () => {
+  const db = new MemoryDB();
+  const account = await createAccount(db);
   const ctx = coordinatorCtx();
-  ctx.getWebSockets = () => [audienceSocket];
   ctx.storage.values.set('state', {
-    approvedUserId: null,
-    lease: null,
+    approvedUserId: account.data.user.id,
+    lease: { userId: account.data.user.id, token: 'old-token', expiresAt: Date.now() + 30_000 },
     telemetry: { temperatureC: 25.4, fanSpeed: 22, mode: 'auto', fanOff: false },
     telemetryAt: Date.now(),
     bridgeConnected: true,
   });
+  ctx.storage.values.set('requests', [{ id: 'old-request', userId: account.data.user.id, status: 'pending', at: Date.now() }]);
   const coordinator = new FanControlCoordinator(ctx);
-  const before = await coordinatorPost(coordinator, '/internal/status', {});
-  const beforeData = await before.json();
-  assert.equal(beforeData.online, false);
-  assert.equal('temperatureC' in beforeData, false);
-  assert.deepEqual(ctx.storage.values.get('state'), { approvedUserId: null, lease: null });
+  await coordinator.ready;
+  assert.equal(ctx.storage.values.size, 0);
 
-  const writesBeforeTelemetry = ctx.storage.writes.length;
-  const bridge = { deserializeAttachment: () => ({ role: 'bridge' }) };
+  const sent = [];
+  const audienceSocket = { send: (message) => sent.push(JSON.parse(message)) };
+  const bridge = { send() {} };
+  attachMockSocket(coordinator, audienceSocket, { role: 'audience' });
+  attachMockSocket(coordinator, bridge, { role: 'bridge', userId: 'presenter' });
+
+  const created = await coordinatorPost(coordinator, '/internal/request', {
+    userId: account.data.user.id, fullName: account.data.user.fullName, email: account.data.user.email,
+  });
+  const controlRequest = await created.json();
+  assert.equal(created.status, 201);
+  const approved = await coordinatorPost(coordinator, '/internal/presenter/decision', {
+    presenterId: 'presenter', action: 'approve', requestId: controlRequest.id,
+  });
+  assert.equal(approved.status, 200);
+  const claim = await coordinatorPost(coordinator, '/internal/claim', {
+    userId: account.data.user.id, fullName: account.data.user.fullName, isPresenter: false,
+  });
+  const { leaseToken } = await claim.json();
+  assert.equal(claim.status, 200);
   await coordinator.webSocketMessage(bridge, JSON.stringify({
     type: 'telemetry', data: { temperatureC: 25.4, fanSpeed: 22, mode: 'auto', fanOff: false },
   }));
-  assert.equal(sent.length, 1);
-  assert.deepEqual(sent[0], { type: 'telemetry', data: { temperatureC: 25.4, fanSpeed: 22, mode: 'auto', fanOff: false } });
-  assert.equal(ctx.storage.writes.length, writesBeforeTelemetry);
-  assert.deepEqual(ctx.storage.values.get('state'), { approvedUserId: null, lease: null });
-  assert.equal(ctx.storage.writes.some(({ key, value }) => key === 'state' && ['telemetry', 'telemetryAt', 'temperatureC', 'fanSpeed', 'mode', 'fanOff'].some((field) => field in value)), false);
+  assert.deepEqual(sent.at(-1), { type: 'telemetry', data: { temperatureC: 25.4, fanSpeed: 22, mode: 'auto', fanOff: false } });
+
+  const before = await coordinatorPost(coordinator, '/internal/status', {});
+  const beforeData = await before.json();
+  assert.equal(beforeData.online, true);
+  assert.equal(coordinator.approvedUserId, account.data.user.id);
+  assert.equal(coordinator.lease.token, leaseToken);
+  assert.equal(ctx.storage.values.size, 0);
+  assert.equal(ctx.storage.calls.every((call) => call.operation === 'delete'), true);
 
   const restartedCoordinator = new FanControlCoordinator(ctx);
+  await restartedCoordinator.ready;
+  assert.equal(restartedCoordinator.approvedUserId, null);
+  assert.equal(restartedCoordinator.lease, null);
+  assert.deepEqual(restartedCoordinator.requests, []);
+  assert.equal(restartedCoordinator.telemetry, null);
+  assert.equal(restartedCoordinator.webSockets.size, 0);
   const afterRestart = await coordinatorPost(restartedCoordinator, '/internal/status', {});
   const afterRestartData = await afterRestart.json();
   assert.equal(afterRestartData.online, false);
   assert.equal('temperatureC' in afterRestartData, false);
-  assert.equal(ctx.storage.values.has('state'), true);
-  await restartedCoordinator.webSocketMessage(audienceSocket, JSON.stringify({ type: 'audience-ping' }));
-  assert.deepEqual(sent.at(-1), { type: 'telemetry', online: false });
-  await restartedCoordinator.webSocketMessage(bridge, JSON.stringify({
+  const lostRequest = await coordinatorPost(restartedCoordinator, '/internal/request-status', { userId: account.data.user.id });
+  assert.deepEqual(await lostRequest.json(), { status: 'none' });
+  const deniedClaim = await coordinatorPost(restartedCoordinator, '/internal/claim', {
+    userId: account.data.user.id, isPresenter: false,
+  });
+  assert.equal(deniedClaim.status, 403);
+  const deniedCommand = await coordinatorPost(restartedCoordinator, '/internal/command', {
+    userId: account.data.user.id, isPresenter: false, leaseToken, command: { speed: 50 },
+  });
+  assert.equal(deniedCommand.status, 403);
+  const presenterRequests = await coordinatorPost(restartedCoordinator, '/internal/presenter/requests', {}, { 'x-presenter-user': 'presenter' });
+  assert.deepEqual((await presenterRequests.json()).requests, []);
+  assert.equal(ctx.storage.values.size, 0);
+  assert.equal(ctx.storage.calls.every((call) => call.operation === 'delete'), true);
+
+  const recoveredMessages = [];
+  const recoveredAudience = { send: (message) => recoveredMessages.push(JSON.parse(message)) };
+  const recoveredBridge = { send() {} };
+  attachMockSocket(restartedCoordinator, recoveredAudience, { role: 'audience' });
+  attachMockSocket(restartedCoordinator, recoveredBridge, { role: 'bridge', userId: 'presenter' });
+  await restartedCoordinator.webSocketMessage(recoveredAudience, JSON.stringify({ type: 'audience-ping' }));
+  assert.deepEqual(recoveredMessages.at(-1), { type: 'telemetry', online: false });
+  await restartedCoordinator.webSocketMessage(recoveredBridge, JSON.stringify({
     type: 'telemetry', data: { temperatureC: 26.1, fanSpeed: 30, mode: 'manual', fanOff: false },
   }));
-  assert.deepEqual(sent.at(-1), { type: 'telemetry', data: { temperatureC: 26.1, fanSpeed: 30, mode: 'manual', fanOff: false } });
+  assert.deepEqual(recoveredMessages.at(-1), { type: 'telemetry', data: { temperatureC: 26.1, fanSpeed: 30, mode: 'manual', fanOff: false } });
+  assert.equal(db.users.size, 1);
 });
 
-test('expired controller leases revoke approval and signal the presenter bridge', async () => {
+test('expired in-memory controller lease revokes approval and signals the bridge', async () => {
   const signals = [];
-  const bridge = { deserializeAttachment: () => ({ role: 'bridge' }), send: (message) => signals.push(JSON.parse(message)) };
+  const bridge = { send: (message) => signals.push(JSON.parse(message)) };
   const ctx = coordinatorCtx();
-  ctx.getWebSockets = () => [bridge];
-  ctx.storage.values.set('state', {
-    approvedUserId: 'user-1',
-    lease: { userId: 'user-1', fullName: 'Test User', token: 'lease-token', expiresAt: Date.now() - 1 },
-  });
-  ctx.storage.values.set('requests', [{ id: 'request-1', userId: 'user-1', at: Date.now(), status: 'approved' }]);
   const coordinator = new FanControlCoordinator(ctx);
-  await coordinator.alarm();
-  assert.deepEqual(ctx.storage.values.get('state'), { approvedUserId: null, lease: null });
-  assert.equal(ctx.storage.values.get('requests')[0].status, 'expired');
+  attachMockSocket(coordinator, bridge, { role: 'bridge' });
+  coordinator.approvedUserId = 'user-1';
+  coordinator.lease = { userId: 'user-1', fullName: 'Test User', token: 'lease-token', expiresAt: Date.now() - 1 };
+  coordinator.requests = [{ id: 'request-1', userId: 'user-1', at: Date.now(), status: 'approved' }];
+  const status = await coordinatorPost(coordinator, '/internal/status', {});
+  const statusData = await status.json();
+  assert.equal(statusData.occupied, false);
+  assert.equal(coordinator.approvedUserId, null);
+  assert.equal(coordinator.lease, null);
+  assert.equal(coordinator.requests[0].status, 'expired');
   assert.deepEqual(signals, [{ type: 'lease-ended' }]);
+  assert.equal(ctx.storage.calls.every((call) => call.operation === 'delete'), true);
 });
