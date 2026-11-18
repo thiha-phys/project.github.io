@@ -11,6 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="subject.css">
   <link rel="stylesheet" href="electronic.css">
+  <link rel="stylesheet" href="account-ui.css">
 </head>
 <body>
   <header class="app-header">
@@ -49,23 +50,31 @@
       </article>
 
       <article class="control-card connection-card">
-        <div class="card-heading"><div><p class="eyebrow">DEVICE LINK</p><h2>ESP32 Hotspot Connection</h2></div><span class="wifi-icon" aria-hidden="true">⌁</span></div>
-        <p class="card-description">The phone joins the ESP32's Wi-Fi first. The button below only claims fan-control access; it does not change your phone's Wi-Fi connection.</p>
+        <div class="card-heading"><div><p class="eyebrow">CONTROL ACCESS</p><h2>Request Fan Control</h2></div><span class="wifi-icon" aria-hidden="true">⌁</span></div>
+        <p class="card-description">Use the website from any Internet-connected device. Log in, request temporary control, and wait for the presenter to approve it.</p>
         <div class="wifi-steps">
-          <div class="wifi-step"><b>1</b><div><strong>Join the ESP32 Wi-Fi</strong><small>In phone Settings → Wi-Fi, choose <b>FanController</b> (password: <b>mdyphysgp2</b>).</small></div></div>
-          <div class="wifi-step"><b>2</b><div><strong>Open the local web page</strong><small>After joining FanController Wi-Fi, tap this button to open the ESP32 control page:</small><a class="open-device-button" href="http://192.168.4.1/">Open ESP32 control page <span aria-hidden="true">↗</span></a><small>If the page does not open, check that your phone is still connected to FanController Wi-Fi.</small></div></div>
-          <div class="wifi-step"><b>3</b><div><strong>Claim fan controls</strong><small>On the ESP32 page that opens, press <b>Claim fan controls</b>. Then use Auto or Manual on that page. Only one phone can control the fan at a time.</small></div></div>
+          <div class="wifi-step"><b>1</b><div><strong>Request access</strong><small>Your registered name and email are shown only to the presenter for approval.</small></div></div>
+          <div class="wifi-step"><b>2</b><div><strong>Presenter approval</strong><small>One approved user can control the fan at a time. Registration alone does not grant control.</small></div></div>
+          <div class="wifi-step"><b>3</b><div><strong>Control the fan</strong><small>Once approved, claim the temporary control lease and use the Control Panel.</small></div></div>
         </div>
         <div class="connect-row"><button class="primary-button" id="connectButton" type="button">Claim fan controls <span>↗</span></button></div>
         <div class="connection-status" id="connectionStatus" data-state="disconnected" role="status" aria-live="polite"><i></i><span id="connectionMessage">Not connected</span></div>
-        <p class="connection-help">Join FanController Wi-Fi before opening the device page. The ESP32 hosts the live fan controls locally; no API key or internet is needed.</p>
+        <p class="connection-help" id="requestStatusMessage">Access requests are temporary. Your account remains available for future seminars.</p>
       </article>
+    </section>
+
+    <section class="control-card approval-card" id="presenterPanel" hidden aria-labelledby="presenter-heading">
+      <div class="card-heading"><div><p class="eyebrow">PRESENTER</p><h2 id="presenter-heading">Control Requests</h2></div><div class="request-actions"><a class="secondary-button" href="bridge.html">Open MacBook BLE bridge</a><button class="secondary-button" id="resetSeminarButton" type="button">Reset temporary requests</button></div></div>
+      <p class="card-description">Review each person's registered name and email before approving. Only one remote controller can hold access at a time. Connect the presenter MacBook to the ESP32 using the BLE bridge.</p>
+      <div id="requestList" class="request-list" aria-live="polite"></div>
+      <button class="takeback-button" id="takeBackControlButton" type="button">Take back control immediately</button>
     </section>
 
   </main>
 
   <footer class="app-footer"><span>MANDALAY UNIVERSITY · DEPARTMENT OF PHYSICS</span><span>ESP32 · LM35 · 9V DC FAN</span></footer>
   <script src="electronic.js"></script>
+  <script src="account-ui.js"></script>
   <script src="pwa.js"></script>
 </body>
 </html>

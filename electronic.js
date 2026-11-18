@@ -14,299 +14,303 @@ const speedLabel = document.getElementById('speedLabel');
 const fanOffButton = document.getElementById('fanOffButton');
 const presetButtons = [...document.querySelectorAll('.preset-button')];
 const manualHint = document.getElementById('manualHint');
-const servedByEsp32 = window.location.hostname === '192.168.4.1';
-
-const TOKEN_KEY = 'group2FanControlToken';
-const CLIENT_KEY = 'group2FanClientId';
+const requestStatusMessage = document.getElementById('requestStatusMessage');
+const presenterPanel = document.getElementById('presenterPanel');
+const requestList = document.getElementById('requestList');
+let currentUser = null;
 let connected = false;
 let controlMode = 'auto';
-let connectionState = 'disconnected';
-let statusTimer = null;
-let heartbeatTimer = null;
-let availabilityTimer = null;
-let controlToken = sessionStorage.getItem(TOKEN_KEY) || '';
+let connectionState = 'checking';
+let requestStatus = { status: 'none' };
+let leaseToken = '';
+let statusTimer;
+let heartbeatTimer;
+let liveSocket;
+let liveReconnectTimer;
+let livePingTimer;
+let lastLivePongAt = 0;
 
-function getDeviceBase() {
-  return window.location.origin;
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, {
+    method: options.method || 'GET', credentials: 'same-origin', cache: 'no-store',
+    headers: options.body ? { 'Content-Type': 'application/json' } : {},
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.error || `Request failed (${response.status}).`);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
 }
 
 function setConnectionState(state, message) {
-  const connectRow = document.querySelector('.connect-row');
-  if (connectRow) connectRow.hidden = !servedByEsp32;
-  connectButton.hidden = !servedByEsp32;
   connectionState = state;
   connectionStatus.dataset.state = state;
   connectButton.dataset.state = state;
-  connectionMessage.textContent = message;
   dashboard.dataset.state = state;
-  heroConnectionText.textContent = state === 'connected' ? 'CONNECTED' : state === 'connecting' ? 'CONNECTING' : state === 'occupied' ? 'IN USE' : state === 'available' ? 'AVAILABLE' : state === 'preview' ? 'PREVIEW' : state === 'error' ? 'ERROR' : 'OFFLINE';
-  connectButton.disabled = state === 'checking' || state === 'connecting' || state === 'occupied' || (!servedByEsp32 && state !== 'connected');
-  if (state === 'connected') {
+  connectionMessage.textContent = message;
+  heroConnectionText.textContent = state === 'connected' ? 'CONNECTED' : state === 'connecting' ? 'CONNECTING' : state === 'occupied' ? 'IN USE' : state === 'available' ? 'AVAILABLE' : state === 'error' ? 'ERROR' : 'CHECKING';
+  if (connected) {
     connectButton.disabled = false;
-    connectButton.textContent = 'Release control';
-  } else if (state === 'occupied') {
-    connectButton.textContent = 'In use';
-  } else if (state === 'checking') {
-    connectButton.textContent = 'Checking…';
+    connectButton.innerHTML = 'Release control <span aria-hidden="true">↗</span>';
   } else if (state === 'connecting') {
-    connectButton.textContent = 'Claiming controls…';
+    connectButton.disabled = true;
+    connectButton.textContent = 'Please wait…';
+  } else if (state === 'occupied') {
+    connectButton.disabled = true;
+    connectButton.textContent = 'Fan is in use';
+  } else if (currentUser?.isPresenter) {
+    connectButton.disabled = state === 'checking';
+    connectButton.innerHTML = 'Take control <span aria-hidden="true">↗</span>';
+  } else if (requestStatus.status === 'approved') {
+    connectButton.disabled = state === 'checking';
+    connectButton.innerHTML = 'Claim approved control <span aria-hidden="true">↗</span>';
+  } else if (requestStatus.status === 'pending') {
+    connectButton.disabled = true;
+    connectButton.textContent = 'Request pending approval';
   } else {
-    connectButton.textContent = servedByEsp32 ? 'Claim fan controls' : 'ESP32 setup required';
+    connectButton.disabled = state === 'checking';
+    connectButton.innerHTML = 'Request fan control <span aria-hidden="true">↗</span>';
   }
+  updateControlAvailability();
 }
 
 function updateControlAvailability() {
+  const isManual = controlMode === 'manual';
   autoButton.disabled = !connected;
   manualButton.disabled = !connected;
-  const isManual = controlMode === 'manual';
   speedSlider.disabled = !connected || !isManual;
   fanOffButton.disabled = !connected || !isManual;
   presetButtons.forEach((button) => { button.disabled = !connected || !isManual; });
   autoButton.setAttribute('aria-pressed', String(!isManual));
   manualButton.setAttribute('aria-pressed', String(isManual));
   manualHint.textContent = !connected
-    ? connectionState === 'occupied'
-      ? 'Another user currently has control.'
-      : 'Connect to the ESP32 to enable controls.'
-    : isManual
-      ? 'Manual mode is active. Set a speed or turn the fan off.'
-      : 'Switch to Manual to adjust speed or turn the fan off.';
+    ? requestStatus.status === 'pending' ? 'Your request is waiting for presenter approval.' : currentUser?.isPresenter ? 'Take control to operate the fan.' : requestStatus.status === 'approved' ? 'Your request is approved. Claim control to continue.' : 'Request control and wait for presenter approval.'
+    : isManual ? 'Manual mode is active. Set a speed or turn the fan off.' : 'Switch to Manual to adjust speed or turn the fan off.';
   document.getElementById('lockIcon').textContent = connected ? (isManual ? '↔' : '⌁') : connectionState === 'occupied' ? '●' : '⌑';
 }
 
 function renderStatus(data) {
-  const temperature = data.temperatureC ?? data.temperature;
-  const speed = Number(data.fanSpeed ?? data.speed ?? 0);
-  if (data.mode) controlMode = String(data.mode).toLowerCase() === 'manual' ? 'manual' : 'auto';
-
-  if (Number.isFinite(Number(temperature))) {
-    temperatureValue.innerHTML = `${Number(temperature).toFixed(1)}<sup>°C</sup>`;
-  }
-  if (Number.isFinite(speed)) {
-    const boundedSpeed = Math.max(0, Math.min(100, Math.round(speed)));
-    const fanIsOff = Boolean(data.fanOff) || boundedSpeed === 0;
-    fanValue.textContent = fanIsOff ? 'OFF' : `${boundedSpeed}%`;
-    fanMeter.style.width = `${boundedSpeed}%`;
-    speedSlider.value = String(boundedSpeed);
-    speedLabel.textContent = `${boundedSpeed}%`;
-    presetButtons.forEach((button) => {
-      button.setAttribute('aria-pressed', String(controlMode === 'manual' && Number(button.dataset.speed) === boundedSpeed));
-    });
-  }
-  heroModeText.textContent = controlMode.toUpperCase();
-  updateControlAvailability();
-}
-
-async function apiRequest(path, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), options.timeout || 4500);
-  const headers = { Accept: 'application/json' };
-  const request = { method: options.method || 'GET', cache: 'no-store', signal: controller.signal, headers };
-  if (options.body) {
-    headers['Content-Type'] = 'application/json';
-    request.body = JSON.stringify(options.body);
-  }
-  try {
-    const response = await fetch(`${getDeviceBase()}${path}`, request);
-    let data = {};
-    try { data = await response.json(); } catch (_) { /* The API contract expects JSON responses. */ }
-    if (response.status === 423 || data.code === 'in_use') {
-      const error = new Error('Another user currently has control.');
-      error.code = 'in_use';
-      throw error;
-    }
-    if (!response.ok) throw new Error(`ESP32 returned HTTP ${response.status}.`);
-    return data;
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
-}
-
-function clearTimers() {
-  window.clearInterval(statusTimer);
-  window.clearInterval(heartbeatTimer);
-  window.clearInterval(availabilityTimer);
-  statusTimer = null;
-  heartbeatTimer = null;
-  availabilityTimer = null;
-}
-
-function markOccupied() {
-  connected = false;
-  controlToken = '';
-  sessionStorage.removeItem(TOKEN_KEY);
-  clearTimers();
-  setConnectionState('occupied', 'Another user is connected. Control is unavailable until they disconnect.');
-  updateControlAvailability();
-  availabilityTimer = window.setInterval(checkAvailability, 4000);
-}
-
-function markError(error) {
-  if (error?.code === 'in_use') {
-    markOccupied();
-    return;
-  }
-  connected = false;
-  controlToken = '';
-  sessionStorage.removeItem(TOKEN_KEY);
-  clearTimers();
-  setConnectionState('error', error?.name === 'AbortError'
-    ? 'Request timed out. Check the ESP32 hotspot and firmware.'
-    : 'The ESP32 page loaded, but its control API is not responding. Finish the ESP32 firmware setup.');
-  updateControlAvailability();
-}
-
-async function getStatus(token = '') {
-  return token
-    ? apiRequest('/api/status', { method: 'POST', body: { token } })
-    : apiRequest('/api/status');
-}
-
-async function beginControlledSession(token, firstStatus) {
-  controlToken = token;
-  sessionStorage.setItem(TOKEN_KEY, token);
-  connected = true;
-  renderStatus(firstStatus);
-  setConnectionState('connected', 'Connected. You have control of this fan.');
-  updateControlAvailability();
-  window.clearInterval(availabilityTimer);
-  statusTimer = window.setInterval(async () => {
-    try {
-      const data = await getStatus(controlToken);
-      if (data.controlGranted === false && data.occupied) throw Object.assign(new Error('in_use'), { code: 'in_use' });
-      renderStatus(data);
-    } catch (error) { markError(error); }
-  }, 2500);
-  heartbeatTimer = window.setInterval(async () => {
-    try {
-      await apiRequest('/api/heartbeat', { method: 'POST', body: { token: controlToken } });
-    } catch (error) { markError(error); }
-  }, 6000);
-}
-
-async function checkAvailability() {
-  if (connected || connectionState === 'connecting') return;
-  if (!availabilityTimer) setConnectionState('checking', 'Checking ESP32 availability…');
-  try {
-    const data = await getStatus(controlToken);
-    renderStatus(data);
-    if (controlToken && data.controlGranted) {
-      await beginControlledSession(controlToken, data);
-    } else if (data.occupied) {
-      markOccupied();
-    } else {
-      controlToken = '';
-      sessionStorage.removeItem(TOKEN_KEY);
-      setConnectionState('available', 'ESP32 is available. Connect to take control.');
-      updateControlAvailability();
-      if (!availabilityTimer) availabilityTimer = window.setInterval(checkAvailability, 5000);
-    }
-  } catch (error) {
-    if (error?.code === 'in_use') markOccupied();
-    else {
-      setConnectionState('error', 'ESP32 not found. Join its hotspot and open this page at http://192.168.4.1/.');
-      updateControlAvailability();
-      if (!availabilityTimer) availabilityTimer = window.setInterval(checkAvailability, 6000);
-    }
-  }
-}
-
-async function connectToDevice() {
-  if (!servedByEsp32) {
-    setConnectionState('error', 'Preview only. Join FanController and open http://192.168.4.1/ after the ESP32 is programmed.');
-    updateControlAvailability();
-    return;
-  }
-  if (connected) {
-    const token = controlToken;
-    try { await apiRequest('/api/disconnect', { method: 'POST', body: { token } }); } catch (_) { /* The device lease will expire if it is already unreachable. */ }
-    connected = false;
-    controlToken = '';
-    sessionStorage.removeItem(TOKEN_KEY);
-    clearTimers();
-    setConnectionState('disconnected', 'Disconnected. The control lock has been released.');
-    heroModeText.textContent = '—';
+  if (!data.online) {
     temperatureValue.innerHTML = '--.-<sup>°C</sup>';
     fanValue.textContent = '--%';
     fanMeter.style.width = '0%';
-    updateControlAvailability();
-    checkAvailability();
+    heroModeText.textContent = '—';
+    dashboard.dataset.state = 'error';
     return;
   }
-
-  connectButton.disabled = true;
-  setConnectionState('connecting', 'Requesting the single-user control lock…');
-  try {
-    let clientId = sessionStorage.getItem(CLIENT_KEY);
-    if (!clientId) {
-      clientId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      sessionStorage.setItem(CLIENT_KEY, clientId);
-    }
-    const claim = await apiRequest('/api/connect', { method: 'POST', body: { clientId } });
-    if (claim.code === 'in_use' || claim.occupied) {
-      markOccupied();
-      return;
-    }
-    if (!claim.token) throw new Error('The ESP32 did not return a control token.');
-    controlToken = claim.token;
-    const data = await getStatus(controlToken);
-    await beginControlledSession(controlToken, data);
-  } catch (error) { markError(error); }
-}
-
-async function setMode(mode) {
-  if (!connected) return;
-  autoButton.disabled = true;
-  manualButton.disabled = true;
-  try {
-    await apiRequest('/api/control', { method: 'POST', body: { token: controlToken, mode } });
-    controlMode = mode;
-    heroModeText.textContent = mode.toUpperCase();
-    updateControlAvailability();
-  } catch (error) { markError(error); }
-}
-
-connectButton.addEventListener('click', connectToDevice);
-autoButton.addEventListener('click', () => setMode('auto'));
-manualButton.addEventListener('click', () => setMode('manual'));
-speedSlider.addEventListener('input', () => { speedLabel.textContent = `${speedSlider.value}%`; });
-speedSlider.addEventListener('change', async () => {
-  if (!connected || controlMode !== 'manual') return;
-  try {
-    await apiRequest('/api/control', { method: 'POST', body: { token: controlToken, speed: Number(speedSlider.value) } });
-    renderStatus(await getStatus(controlToken));
-  } catch (error) { markError(error); }
-});
-fanOffButton.addEventListener('click', async () => {
-  if (!connected || controlMode !== 'manual') return;
-  try {
-    await apiRequest('/api/control', { method: 'POST', body: { token: controlToken, off: true } });
-    renderStatus(await getStatus(controlToken));
-  } catch (error) { markError(error); }
-});
-
-presetButtons.forEach((button) => {
-  button.addEventListener('click', async () => {
-    if (!connected || controlMode !== 'manual') return;
-    const speed = Number(button.dataset.speed);
-    presetButtons.forEach((item) => { item.disabled = true; });
-    try {
-      await apiRequest('/api/control', { method: 'POST', body: { token: controlToken, speed } });
-      renderStatus(await getStatus(controlToken));
-    } catch (error) { markError(error); }
-  });
-});
-
-window.addEventListener('pagehide', () => {
-  if (!connected || !controlToken || !navigator.sendBeacon) return;
-  const body = new Blob([JSON.stringify({ token: controlToken })], { type: 'application/json' });
-  navigator.sendBeacon(`${getDeviceBase()}/api/disconnect`, body);
-});
-
-updateControlAvailability();
-if (servedByEsp32) {
-  checkAvailability();
-} else {
-  setConnectionState('preview', 'Live temperature and fan output are available on the ESP32 page. This hosted preview cannot read the local device.');
+  const temperature = Number(data.temperatureC ?? data.temperature);
+  const speed = Number(data.fanSpeed ?? data.speed ?? 0);
+  if (Number.isFinite(temperature)) temperatureValue.innerHTML = `${temperature.toFixed(1)}<sup>°C</sup>`;
+  if (Number.isFinite(speed)) {
+    const boundedSpeed = Math.max(0, Math.min(100, Math.round(speed)));
+    fanValue.textContent = data.fanOff || boundedSpeed === 0 ? 'OFF' : `${boundedSpeed}%`;
+    fanMeter.style.width = `${boundedSpeed}%`;
+    speedSlider.value = String(boundedSpeed);
+    speedLabel.textContent = `${boundedSpeed}%`;
+    presetButtons.forEach((button) => button.setAttribute('aria-pressed', String(controlMode === 'manual' && Number(button.dataset.speed) === boundedSpeed)));
+  }
+  controlMode = String(data.mode).toLowerCase() === 'manual' ? 'manual' : 'auto';
+  heroModeText.textContent = controlMode.toUpperCase();
+  dashboard.dataset.state = connected ? 'connected' : 'available';
   updateControlAvailability();
 }
+
+async function refreshRequestStatus() {
+  try {
+    requestStatus = await apiRequest('/api/control/request');
+    const labels = { none: 'No control request yet.', pending: 'Your request is waiting for presenter approval.', approved: 'The presenter approved your request. You may claim the controls.', rejected: 'The presenter declined this request. You may submit a new request if needed.', revoked: 'Your temporary permission was revoked.', expired: 'Your temporary permission expired after the control connection ended.' };
+    requestStatusMessage.textContent = currentUser?.isPresenter ? 'Presenter access is active. You can approve a request or take back control.' : (labels[requestStatus.status] || 'Control request status is ready.');
+    if (requestStatus.status === 'expired' || requestStatus.status === 'revoked') { connected = false; leaseToken = ''; }
+    if (!connected && connectionState !== 'connecting' && connectionState !== 'occupied') setConnectionState(connectionState, connectionMessage.textContent);
+  } catch (error) {
+    if (error.status === 401) location.replace(`/account.html?next=${encodeURIComponent(location.pathname + location.search)}`);
+  }
+}
+
+async function refreshLiveStatus() {
+  try {
+    const data = await apiRequest('/api/live/status');
+    renderStatus(data);
+    if (!data.online && !connected) setConnectionState('error', 'The live hardware bridge is offline. Ask the presenter to start the bridge.');
+    else if (!connected && connectionState !== 'occupied') setConnectionState('available', 'Live ESP32 readings are available. Request control if needed.');
+  } catch (error) {
+    if (error.status === 401) location.replace(`/account.html?next=${encodeURIComponent(location.pathname + location.search)}`);
+    else if (!connected) setConnectionState('error', error.message);
+  }
+}
+
+function connectLiveSocket() {
+  const liveUrl = new URL('/api/live/socket', location.href);
+  liveUrl.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  let socket;
+  try {
+    socket = new WebSocket(liveUrl);
+  } catch (error) {
+    setConnectionState('error', `Could not connect to the live update service: ${error.message}`);
+    clearTimeout(liveReconnectTimer);
+    liveReconnectTimer = setTimeout(connectLiveSocket, 3000);
+    return;
+  }
+  liveSocket = socket;
+  socket.addEventListener('message', (event) => {
+    let message;
+    try { message = JSON.parse(event.data); } catch { return; }
+    if (message.type === 'audience-pong') {
+      lastLivePongAt = Date.now();
+      return;
+    }
+    if (message.type !== 'telemetry') return;
+    if (message.online === false || !message.data) {
+      renderStatus({ online: false });
+      if (!connected) setConnectionState('error', 'The live hardware bridge is offline. Ask the presenter to start the bridge.');
+      return;
+    }
+    renderStatus({ online: true, ...message.data });
+    if (!connected && connectionState !== 'occupied') setConnectionState('available', 'Live ESP32 readings are available. Request control if needed.');
+  });
+  socket.addEventListener('close', () => {
+    if (liveSocket !== socket) return;
+    liveSocket = undefined;
+    clearInterval(livePingTimer);
+    renderStatus({ online: false });
+    if (!connected) setConnectionState('error', 'Live update connection lost. Reconnecting…');
+    clearTimeout(liveReconnectTimer);
+    liveReconnectTimer = setTimeout(connectLiveSocket, 3000);
+  });
+  socket.addEventListener('open', () => {
+    lastLivePongAt = Date.now();
+    livePingTimer = setInterval(() => {
+      if (Date.now() - lastLivePongAt > 40000) {
+        socket.close();
+        return;
+      }
+      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'audience-ping' }));
+    }, 15000);
+  });
+  socket.addEventListener('error', () => socket.close());
+}
+
+async function refreshPresenterRequests() {
+  if (!currentUser?.isPresenter) return;
+  presenterPanel.hidden = false;
+  try {
+    const data = await apiRequest('/api/presenter/requests');
+    if (!data.requests.length) { requestList.innerHTML = '<p class="empty-requests">There are no pending control requests.</p>'; return; }
+    requestList.replaceChildren(...data.requests.map((item) => {
+      const row = document.createElement('article'); row.className = 'control-request-item';
+      const details = document.createElement('div');
+      const name = document.createElement('strong'); name.textContent = item.fullName;
+      const email = document.createElement('span'); email.textContent = item.email;
+      const status = document.createElement('small'); status.textContent = `${item.status.toUpperCase()} · ${new Date(item.at).toLocaleString()}`;
+      details.append(name, email, status);
+      const actions = document.createElement('div'); actions.className = 'request-actions';
+      const choices = item.status === 'pending' ? [['approve', 'Approve'], ['reject', 'Reject']] : [['revoke', 'Revoke']];
+      for (const [action, label] of choices) {
+        const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+        button.dataset.action = action; button.dataset.requestId = item.id; button.dataset.userId = item.userId; actions.append(button);
+      }
+      row.append(details, actions); return row;
+    }));
+  } catch (error) { requestList.textContent = error.message; }
+}
+
+async function startControl() {
+  if (connected) {
+    connectButton.disabled = true;
+    let releaseError;
+    try { await apiRequest('/api/control/release', { method: 'POST', body: {} }); }
+    catch (error) { releaseError = error; }
+    connected = false; leaseToken = ''; clearInterval(heartbeatTimer);
+    setConnectionState(releaseError ? 'error' : 'available', releaseError
+      ? `Release could not be confirmed. Control will expire automatically: ${releaseError.message}`
+      : 'Control released.');
+    return;
+  }
+  setConnectionState('connecting', currentUser?.isPresenter ? 'Taking presenter control…' : 'Checking presenter approval…');
+  try {
+    if (!currentUser?.isPresenter && requestStatus.status !== 'approved') {
+      requestStatus = await apiRequest('/api/control/request', { method: 'POST', body: {} });
+      await refreshRequestStatus();
+      setConnectionState('available', 'Control request sent. Wait for the presenter to approve it.'); return;
+    }
+    const result = await apiRequest('/api/control/claim', { method: 'POST', body: {} });
+    leaseToken = result.leaseToken; connected = true;
+    setConnectionState('connected', 'Connected. You have temporary control of this fan.');
+    await refreshLiveStatus();
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = setInterval(async () => {
+      try { await apiRequest('/api/control/heartbeat', { method: 'POST', body: { leaseToken } }); }
+      catch (error) { connected = false; leaseToken = ''; setConnectionState('error', error.message); }
+    }, 8_000);
+  } catch (error) { connected = false; leaseToken = ''; setConnectionState(error.status === 423 ? 'occupied' : 'error', error.message); }
+}
+
+async function sendCommand(command) {
+  if (!connected) return;
+  try {
+    await apiRequest('/api/control/command', { method: 'POST', body: { leaseToken, ...command } });
+    await refreshLiveStatus();
+  } catch (error) {
+    if (error.status === 403) { connected = false; leaseToken = ''; }
+    setConnectionState('error', error.message);
+  }
+}
+
+connectButton.addEventListener('click', startControl);
+autoButton.addEventListener('click', () => sendCommand({ mode: 'auto' }));
+manualButton.addEventListener('click', () => sendCommand({ mode: 'manual' }));
+speedSlider.addEventListener('input', () => { speedLabel.textContent = `${speedSlider.value}%`; });
+speedSlider.addEventListener('change', () => { if (controlMode === 'manual') sendCommand({ speed: Number(speedSlider.value) }); });
+fanOffButton.addEventListener('click', () => { if (controlMode === 'manual') sendCommand({ off: true }); });
+presetButtons.forEach((button) => button.addEventListener('click', () => { if (controlMode === 'manual') sendCommand({ speed: Number(button.dataset.speed) }); }));
+
+requestList.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-action]'); if (!button) return;
+  button.disabled = true;
+  try {
+    await apiRequest('/api/presenter/decision', { method: 'POST', body: { action: button.dataset.action, requestId: button.dataset.requestId, userId: button.dataset.userId } });
+    await refreshPresenterRequests(); await refreshRequestStatus();
+  } catch (error) { button.disabled = false; alert(error.message); }
+});
+
+document.getElementById('takeBackControlButton').addEventListener('click', async () => {
+  try {
+    await apiRequest('/api/presenter/decision', { method: 'POST', body: { action: 'take-control' } });
+    await refreshPresenterRequests(); setConnectionState('available', 'Any temporary controller has been revoked.');
+  } catch (error) { alert(error.message); }
+});
+
+document.getElementById('resetSeminarButton').addEventListener('click', async () => {
+  if (!confirm('Clear temporary control requests and permissions? User accounts will remain.')) return;
+  try { await apiRequest('/api/presenter/reset', { method: 'POST', body: {} }); await refreshPresenterRequests(); await refreshRequestStatus(); }
+  catch (error) { alert(error.message); }
+});
+
+async function initialize() {
+  try { currentUser = (await apiRequest('/api/auth/session')).user; }
+  catch (error) {
+    if (error.status === 401) {
+      location.replace(`/account.html?next=${encodeURIComponent(location.pathname + location.search)}`);
+      return;
+    }
+    setConnectionState('error', `Could not verify your account session: ${error.message}`);
+    connectButton.disabled = true;
+    return;
+  }
+  await Promise.all([refreshRequestStatus(), refreshLiveStatus(), refreshPresenterRequests()]);
+  connectLiveSocket();
+  statusTimer = setInterval(async () => { await refreshRequestStatus(); await refreshPresenterRequests(); }, 3000);
+}
+
+window.addEventListener('pagehide', () => {
+  clearInterval(statusTimer);
+  clearInterval(heartbeatTimer);
+  clearTimeout(liveReconnectTimer);
+  clearInterval(livePingTimer);
+  liveSocket?.close();
+});
+updateControlAvailability();
+initialize();

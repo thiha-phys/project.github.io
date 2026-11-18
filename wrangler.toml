@@ -1,0 +1,17 @@
+name = "mu-physics-project"
+pages_build_output_dir = "."
+compatibility_date = "2026-11-19"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mu-physics-accounts"
+database_id = "SET_AFTER_CREATING_D1"
+migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "FAN_COORDINATOR"
+class_name = "FanControlCoordinator"
+script_name = "mu-physics-fan-coordinator"
+
+# Bind a separately deployed Durable Object worker in the Cloudflare Pages
+# dashboard as FAN_COORDINATOR. See DEPLOYMENT.md.

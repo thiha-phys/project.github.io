@@ -1,0 +1,14 @@
+name = "mu-physics-fan-coordinator"
+main = "worker.js"
+compatibility_date = "2026-11-19"
+
+[vars]
+CONTROL_HISTORY_RETENTION_DAYS = "30"
+
+[[durable_objects.bindings]]
+name = "FAN_COORDINATOR"
+class_name = "FanControlCoordinator"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FanControlCoordinator"]

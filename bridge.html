@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251e">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="stylesheet" href="subject.css">
+  <link rel="stylesheet" href="electronic.css">
+  <link rel="stylesheet" href="account-ui.css">
+  <title>Presenter BLE Bridge | Mandalay University</title>
+</head>
+<body>
+  <header class="app-header">
+    <a class="app-brand" href="index.html"><span class="app-seal"><img src="logo.png" alt=""></span><span><strong>MANDALAY UNIVERSITY</strong><small>DEPARTMENT OF PHYSICS · GROUP 2</small></span></a>
+    <nav class="app-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="electronic.html">Fan controller</a></nav>
+  </header>
+  <main class="app-shell">
+    <a class="page-back" href="electronic.html"><span aria-hidden="true">←</span> Back to fan controller</a>
+    <section class="control-card" aria-labelledby="bridgeTitle">
+      <p class="eyebrow">PRESENTER · MACBOOK CHROME</p>
+      <h1 id="bridgeTitle">ESP32 BLE Bridge</h1>
+      <p class="card-description">Keep this page open on the presenter’s MacBook during the seminar. It connects to the nearby ESP32 over encrypted Bluetooth LE and relays live readings and authorized commands through Cloudflare.</p>
+      <p class="connection-status" id="bridgeStatus" data-state="disconnected" role="status" aria-live="polite"><i></i><span>Not connected</span></p>
+      <div class="connect-row">
+        <button class="primary-button" id="bridgeConnect" type="button">Connect to ESP32 <span aria-hidden="true">↗</span></button>
+        <button class="secondary-button" id="bridgeDisconnect" type="button" disabled>Disconnect</button>
+      </div>
+      <p class="connection-help">Use Google Chrome on macOS, allow Bluetooth access, and enter the six-digit pairing PIN shown in the ESP32 Serial Monitor when prompted. The fan’s automatic temperature control continues locally if this bridge or the Internet disconnects.</p>
+    </section>
+  </main>
+  <footer class="app-footer"><span>ESP32-C3 · BLE · CLOUDFLARE DURABLE OBJECT</span><span>Presenter account required</span></footer>
+  <script src="bridge.js"></script>
+  <script src="account-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251e">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="stylesheet" href="account.css">
+  <title>Account | Mandalay University Physics</title>
+</head>
+<body>
+  <main class="account-layout">
+    <a class="account-brand" href="index.html"><img src="logo.png" alt=""><span><strong>MANDALAY UNIVERSITY</strong><small>DEPARTMENT OF PHYSICS · GROUP 2</small></span></a>
+    <section class="account-card" aria-labelledby="account-title">
+      <p class="account-kicker">GROUP 2 PROJECT PORTAL</p>
+      <h1 id="account-title">Welcome</h1>
+      <p class="account-lead">Create an account or log in to continue to the project website.</p>
+      <div class="account-tabs" role="tablist" aria-label="Account access">
+        <button type="button" id="registerTab" class="active" role="tab" aria-selected="true">Create account</button>
+        <button type="button" id="loginTab" role="tab" aria-selected="false">Log in</button>
+      </div>
+      <form id="registerForm" novalidate>
+        <label>Full Name<input name="fullName" type="text" autocomplete="name" minlength="2" maxlength="120" required></label>
+        <label>Email Address<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+        <label>Password<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><small>Use at least 12 characters.</small></label>
+        <label>Confirm Password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+        <button class="submit-button" type="submit">Create account</button>
+      </form>
+      <form id="loginForm" hidden novalidate>
+        <label>Email Address<input name="email" type="email" autocomplete="username" maxlength="254" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="submit-button" type="submit">Log in</button>
+      </form>
+      <p id="accountMessage" class="account-message" role="status" aria-live="polite"></p>
+      <aside class="privacy-note"><strong>Privacy</strong><p>Your full name, normalized email address, secure password hash, and account dates are stored for sign-in and presenter-approved control requests. Passwords and confirmation entries are never stored. Accounts remain available for future project visits until an account is deleted through an approved process.</p></aside>
+    </section>
+    <a class="back-link" href="index.html">← Return to project</a>
+  </main>
+  <script src="account.js"></script>
+</body>
+</html>
