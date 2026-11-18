@@ -83,7 +83,7 @@ test('password hash is salted and verifies only the matching password', async ()
   assert.notEqual(a, b);
   assert.equal(await verifyPassword('Long-test-password-947!', a), true);
   assert.equal(await verifyPassword('not-the-password', a), false);
-  assert.equal(a.startsWith('pbkdf2-sha256$310000$'), true);
+  assert.equal(a.startsWith('pbkdf2-sha256$100000$'), true);
 });
 
 test('successful registration creates an ordinary account and secure cookie', async () => {

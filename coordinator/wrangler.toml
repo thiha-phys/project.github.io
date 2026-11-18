@@ -1,6 +1,6 @@
 name = "mu-physics-fan-coordinator"
 main = "worker.js"
-compatibility_date = "2026-11-19"
+compatibility_date = "2026-11-17"
 
 [vars]
 CONTROL_HISTORY_RETENTION_DAYS = "30"

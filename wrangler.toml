@@ -1,11 +1,12 @@
+
 name = "mu-physics-project"
 pages_build_output_dir = "."
-compatibility_date = "2026-11-19"
+compatibility_date = "2026-11-17"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "mu-physics-accounts"
-database_id = "SET_AFTER_CREATING_D1"
+database_id = "720d620d-cfb2-4104-b903-082d3374e476"
 migrations_dir = "migrations"
 
 [[durable_objects.bindings]]

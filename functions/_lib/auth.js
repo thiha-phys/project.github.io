@@ -1,6 +1,6 @@
 const COOKIE_NAME = '__Host-group2_session';
 const SESSION_DAYS = 30;
-const PBKDF2_ITERATIONS = 310_000;
+const PBKDF2_ITERATIONS = 100_000;
 
 export function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -49,7 +49,7 @@ export async function verifyPassword(password, stored) {
   const [scheme, iterationText, saltText, expectedText] = String(stored).split('$');
   if (scheme !== 'pbkdf2-sha256' || !/^\d+$/.test(iterationText) || !saltText || !expectedText) return false;
   const iterations = Number(iterationText);
-  if (iterations < 100_000 || iterations > 1_000_000) return false;
+  if (iterations < 100_000 || iterations > 100_000) return false;
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: fromBase64Url(saltText), iterations }, key, 256));
   const expected = fromBase64Url(expectedText);
