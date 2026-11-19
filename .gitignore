@@ -8,3 +8,43 @@ __pycache__/
 # Node.js
 node_modules/
 .wrangler/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+.dev.vars*
+!.dev.vars.example
+
+# Private key material
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_ed25519
+id_ecdsa
+
+# Local databases and backups; keep migrations/*.sql tracked
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*-backup.sql
+*.dump
+*.dump.sql
+*.sql.gz
+
+# Generated and local-only files
+_worker.bundle
+Thumbs.db
+.venv/
+venv/
+.pytest_cache/
+*.log
