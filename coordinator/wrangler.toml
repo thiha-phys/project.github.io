@@ -4,6 +4,7 @@ compatibility_date = "2026-11-17"
 
 [vars]
 CONTROL_HISTORY_RETENTION_DAYS = "30"
+PRESENTER_USER_ID = "30968fe4-4be3-445a-b6b9-d82e1311c0bd"
 
 # Must match the Durable Object binding declared in the Pages wrangler.toml.
 [[durable_objects.bindings]]

@@ -1,8 +1,19 @@
 const LEASE_MS = 30_000;
 const REQUEST_TTL_MS = 15 * 60_000;
 const DEFAULT_HISTORY_RETENTION_DAYS = 30;
+
+function tokenMatches(expected, provided) {
+  if (!expected || !provided || expected.length !== provided.length) return false;
+  let difference = 0;
+  for (let i = 0; i < expected.length; i += 1) {
+    difference |= expected.charCodeAt(i) ^ provided.charCodeAt(i);
+  }
+  return difference === 0;
+}
 export class FanControlCoordinator {
   constructor(ctx, env = {}) {
+    this.presenterUserId = env.PRESENTER_USER_ID || '';
+    this.internalToken = env.COORDINATOR_INTERNAL_TOKEN || '';
     this.ready = ctx.blockConcurrencyWhile(async () => {
       await ctx.storage.delete('state');
       await ctx.storage.delete('requests');
@@ -25,6 +36,9 @@ export class FanControlCoordinator {
 
   async fetch(request) {
     await this.ready;
+    if (!tokenMatches(this.internalToken, request.headers.get('x-coordinator-token') || '')) {
+      return Response.json({ error: 'Unauthorized coordinator request.' }, { status: 403 });
+    }
     const url = new URL(request.url);
     if (url.pathname === '/bridge') return this.acceptBridge(request);
     if (url.pathname === '/live') return this.acceptAudience(request);
@@ -51,14 +65,24 @@ export class FanControlCoordinator {
       return Response.json(item, { status: 201 });
     }
     if (url.pathname === '/internal/request-status') {
-      return Response.json(this.requests.find((item) => item.userId === body.userId) || { status: 'none' });
+      const item = this.requests.find((requestItem) => requestItem.userId === body.userId);
+      if (!item) return Response.json({ status: 'none' });
+      const lease = item.status === 'approved' && this.approvedUserId === body.userId
+        && this.lease?.userId === body.userId && !this.lease.isPresenter && this.lease.expiresAt > now
+        ? { leaseToken: this.lease.token, leaseExpiresAt: this.lease.expiresAt }
+        : {};
+      return Response.json({ ...item, ...lease });
     }
     if (url.pathname === '/internal/presenter/requests') {
-      if (!request.headers.get('x-presenter-user')) return Response.json({ error: 'Presenter access required.' }, { status: 403 });
+      if (!this.presenterUserId || request.headers.get('x-presenter-user') !== this.presenterUserId) {
+        return Response.json({ error: 'Presenter access required.' }, { status: 403 });
+      }
       return Response.json({ requests: this.requests.filter((item) => item.status === 'pending' || item.status === 'approved') });
     }
     if (url.pathname === '/internal/presenter/decision') {
-      if (!body.presenterId) return Response.json({ error: 'Presenter access required.' }, { status: 403 });
+      if (!this.presenterUserId || body.presenterId !== this.presenterUserId) {
+        return Response.json({ error: 'Presenter access required.' }, { status: 403 });
+      }
       const item = this.requests.find((row) => row.id === body.requestId || row.userId === body.userId);
       if (body.action === 'take-control') {
         this.sendBridgeSignal('lease-ended');
@@ -70,10 +94,28 @@ export class FanControlCoordinator {
       }
       if (!item) return Response.json({ error: 'Control request not found.' }, { status: 404 });
       if (body.action === 'approve') {
-        if (this.approvedUserId && this.approvedUserId !== item.userId) return Response.json({ error: 'Another user already has approved control. Revoke it first.' }, { status: 409 });
+        const activeLease = this.lease && this.lease.expiresAt > now ? this.lease : null;
+        if (item.status === 'approved' && this.approvedUserId === item.userId && activeLease?.userId === item.userId && !activeLease.isPresenter) {
+          return Response.json({ ok: true, request: item, expiresInMs: activeLease.expiresAt - now });
+        }
+        if (activeLease || (this.approvedUserId && this.approvedUserId !== item.userId)) {
+          return Response.json({ error: 'Another user currently holds control. Revoke it or wait for the lease to expire.' }, { status: 409 });
+        }
+        if (item.status !== 'pending' && item.status !== 'rejected') {
+          return Response.json({ error: 'This request can no longer be approved.' }, { status: 409 });
+        }
         this.requests.forEach((row) => { if (row.status === 'approved' && row.userId !== item.userId) row.status = 'revoked'; });
         item.status = 'approved';
         this.approvedUserId = item.userId;
+        this.lease = {
+          userId: item.userId,
+          fullName: item.fullName,
+          token: crypto.randomUUID() + crypto.randomUUID(),
+          expiresAt: now + LEASE_MS,
+          isPresenter: false,
+        };
+        this.sendBridgeSignal('lease-active');
+        return Response.json({ ok: true, request: item, expiresInMs: LEASE_MS });
       } else if (body.action === 'reject') {
         item.status = 'rejected';
       } else if (body.action === 'revoke') {
@@ -88,11 +130,21 @@ export class FanControlCoordinator {
       return Response.json({ ok: true, request: item });
     }
     if (url.pathname === '/internal/claim') {
-      const isPresenter = Boolean(body.isPresenter && body.userId);
+      const isPresenter = Boolean(this.presenterUserId && body.userId === this.presenterUserId);
       if (!isPresenter && (this.approvedUserId !== body.userId || !this.hasApprovedRequest(body.userId))) {
         return Response.json({ error: 'Presenter approval is required.' }, { status: 403 });
       }
       if (!isPresenter && this.lease && this.lease.userId !== body.userId) return Response.json({ error: 'Another user currently controls the fan.' }, { status: 423 });
+      if (!isPresenter) {
+        if (!this.lease || this.lease.userId !== body.userId || this.lease.isPresenter) {
+          return Response.json({ error: 'The approved control lease is no longer active.' }, { status: 409 });
+        }
+        return Response.json({
+          ok: true,
+          leaseToken: this.lease.token,
+          expiresInMs: this.lease.expiresAt - now,
+        });
+      }
       if (isPresenter) {
         if (this.lease && this.lease.userId !== body.userId) {
           this.sendBridgeSignal('lease-ended');
@@ -116,7 +168,7 @@ export class FanControlCoordinator {
       return Response.json({ ok: true, expiresInMs: LEASE_MS });
     }
     if (url.pathname === '/internal/command') {
-      const isPresenter = Boolean(body.isPresenter && body.userId);
+      const isPresenter = Boolean(this.presenterUserId && body.userId === this.presenterUserId);
       const isLeaseOwner = Boolean(this.lease && !this.lease.isPresenter && this.lease.userId === body.userId
         && this.lease.token === body.leaseToken && this.lease.expiresAt > now
         && this.approvedUserId === body.userId && this.hasApprovedRequest(body.userId));
@@ -139,7 +191,8 @@ export class FanControlCoordinator {
       return Response.json({ ok: true });
     }
     if (url.pathname === '/internal/bridge-release') {
-      if (this.bridge && this.socketMetadata.get(this.bridge)?.userId === body.userId) {
+      if (this.presenterUserId && body.userId === this.presenterUserId
+        && this.bridge && this.socketMetadata.get(this.bridge)?.userId === this.presenterUserId) {
         const bridge = this.bridge;
         this.sendBridgeSignal('lease-ended');
         this.bridge = null;
@@ -154,7 +207,9 @@ export class FanControlCoordinator {
       return Response.json({ ok: true });
     }
     if (url.pathname === '/internal/presenter/reset') {
-      if (!body.presenterId) return Response.json({ error: 'Presenter access required.' }, { status: 403 });
+      if (!this.presenterUserId || body.presenterId !== this.presenterUserId) {
+        return Response.json({ error: 'Presenter access required.' }, { status: 403 });
+      }
       this.sendBridgeSignal('lease-ended');
       this.lease = null;
       this.approvedUserId = null;
@@ -236,7 +291,9 @@ export class FanControlCoordinator {
   async acceptBridge(request) {
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('WebSocket required.', { status: 426 });
     const presenterUserId = new URL(request.url).searchParams.get('presenterUserId');
-    if (!presenterUserId) return new Response('Presenter authentication required.', { status: 403 });
+    if (!this.presenterUserId || presenterUserId !== this.presenterUserId) {
+      return new Response('Presenter authentication required.', { status: 403 });
+    }
     if (this.bridge) {
       this.sendBridgeSignal('lease-ended');
       this.bridge.close(1012, 'A new presenter bridge connected.');

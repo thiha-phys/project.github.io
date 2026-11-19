@@ -193,7 +193,6 @@ void applyBleCommand(const BleCommand &command) {
 void startBleService() {
   const uint32_t pairingPin = 100000 + (esp_random() % 900000);
   BLEDevice::init(BLE_DEVICE_NAME);
-  BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
   BLESecurity::setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
   BLESecurity::setCapability(ESP_IO_CAP_OUT);
   BLESecurity::setPassKey(true, pairingPin);

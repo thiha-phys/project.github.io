@@ -25,14 +25,19 @@ class WranglerConfigurationTests(unittest.TestCase):
         self.coordinator = tomllib.loads((PROJECT_ROOT / 'coordinator' / 'wrangler.toml').read_text())
 
     def test_pages_uses_the_separately_deployed_durable_object_worker(self):
+        self.assertEqual(self.pages['name'], 'project')
         self.assertEqual(self.pages['pages_build_output_dir'], '.')
         self.assertNotIn('main', self.pages)
         self.assertNotIn('services', self.pages)
+        self.assertNotIn('env', self.pages)
         binding = next(item for item in self.pages['durable_objects']['bindings'] if item['name'] == 'FAN_COORDINATOR')
         coordinator_binding = next(item for item in self.coordinator['durable_objects']['bindings'] if item['name'] == 'FAN_COORDINATOR')
         self.assertEqual(binding['script_name'], self.coordinator['name'])
         self.assertEqual(binding['class_name'], coordinator_binding['class_name'])
         self.assertEqual(binding['class_name'], 'FanControlCoordinator')
+
+    def test_production_pages_presenter_id_matches_the_coordinator_worker(self):
+        self.assertEqual(self.pages['vars']['PRESENTER_USER_ID'], self.coordinator['vars']['PRESENTER_USER_ID'])
 
     def test_coordinator_worker_exports_its_sqlite_durable_object_migration(self):
         self.assertEqual(self.coordinator['main'], 'worker.js')

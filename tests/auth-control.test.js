@@ -9,6 +9,7 @@ import { onRequestPost as login } from '../functions/api/auth/login.js';
 import { onRequestGet as getSession } from '../functions/api/auth/session.js';
 import { onRequestPost as logout } from '../functions/api/auth/logout.js';
 import { onRequest as pageMiddleware } from '../functions/_middleware.js';
+import { onRequestGet as controlRequestStatus } from '../functions/api/control/request.js';
 import { onRequestPost as requestControl } from '../functions/api/control/request.js';
 import { onRequestPost as claimControl } from '../functions/api/control/claim.js';
 import { onRequestPost as commandControl } from '../functions/api/control/command.js';
@@ -62,7 +63,17 @@ class MemoryStatement {
   }
 }
 
+const TEST_PRESENTER_ID = 'presenter';
+const TEST_INTERNAL_TOKEN = 'test-internal-secret';
+
 function envWith(db, extras = {}) { return { DB: db, ...extras }; }
+
+function createCoordinator(ctx = coordinatorCtx(), presenterId = TEST_PRESENTER_ID) {
+  return new FanControlCoordinator(ctx, {
+    PRESENTER_USER_ID: presenterId,
+    COORDINATOR_INTERNAL_TOKEN: TEST_INTERNAL_TOKEN,
+  });
+}
 function request(url, { method = 'GET', body, cookie, origin = 'https://project.test' } = {}) {
   const headers = new Headers({ Origin: origin });
   if (body !== undefined) headers.set('Content-Type', 'application/json');
@@ -172,6 +183,7 @@ test('logout invalidates the session token', async () => {
   const authCookie = cookieToken(cookie);
   let wasInvalidatedBeforeCleanup = false;
   const env = envWith(db, {
+    COORDINATOR_INTERNAL_TOKEN: TEST_INTERNAL_TOKEN,
     FAN_COORDINATOR: {
       idFromName: () => 'one',
       get: () => ({
@@ -264,18 +276,22 @@ test('Electronic page redirects to login when signed out and opens with a valid 
 test('Electronic page loads its same-origin scripts and does not depend on the old ESP32 hotspot', () => {
   const pagePath = fileURLToPath(new URL('../electronic.html', import.meta.url));
   const source = readFileSync(pagePath, 'utf8');
+  const script = readFileSync(new URL('../electronic.js', import.meta.url), 'utf8');
   const scripts = [...source.matchAll(/<script\s+src="([^"]+)"/g)].map((match) => match[1]);
   assert.ok(scripts.includes('electronic.js'));
   assert.ok(scripts.includes('account-ui.js'));
   for (const script of scripts) assert.equal(existsSync(new URL(`../${script}`, import.meta.url)), true, `${script} should exist`);
-  assert.doesNotMatch(source + readFileSync(new URL('../electronic.js', import.meta.url), 'utf8'), /192\.168\.4\.1/);
+  assert.doesNotMatch(source + script, /192\.168\.4\.1/);
+  assert.doesNotMatch(script, /Claim approved control/);
+  assert.match(script, /activateLease\(requestStatus\.leaseToken\)/);
+  assert.match(script, /You are in control\./);
 });
 
 test('authenticated control request includes server-verified identity', async () => {
   const db = new MemoryDB();
   const { cookie, data } = await createAccount(db);
   const calls = [];
-  const env = envWith(db, { FAN_COORDINATOR: { idFromName: (name) => name, get: () => ({ fetch: async (url, options) => { calls.push({ url, body: JSON.parse(options.body) }); return Response.json({ id: 'req-1', status: 'pending' }, { status: 201 }); } }) } });
+  const env = envWith(db, { COORDINATOR_INTERNAL_TOKEN: TEST_INTERNAL_TOKEN, FAN_COORDINATOR: { idFromName: (name) => name, get: () => ({ fetch: async (url, options) => { calls.push({ url, body: JSON.parse(options.body) }); return Response.json({ id: 'req-1', status: 'pending' }, { status: 201 }); } }) } });
   const response = await requestControl({ request: request('/api/control/request', { method: 'POST', cookie: cookieToken(cookie), body: {} }), env });
   assert.equal(response.status, 201);
   assert.equal(calls[0].body.userId, data.user.id);
@@ -293,9 +309,10 @@ test('presenter receives the authenticated registrant identity and request statu
   const db = new MemoryDB();
   const { cookie, data: user } = await createAccount(db);
   const presenter = await createAccount(db, 'presenter@example.com');
-  const coordinator = new FanControlCoordinator(coordinatorCtx());
+  const coordinator = createCoordinator(coordinatorCtx(), presenter.data.user.id);
   const env = envWith(db, {
     PRESENTER_USER_ID: presenter.data.user.id,
+    COORDINATOR_INTERNAL_TOKEN: TEST_INTERNAL_TOKEN,
     FAN_COORDINATOR: {
       idFromName: () => 'one',
       get: () => ({ fetch: (url, options) => coordinator.fetch(new Request(url, options)) }),
@@ -317,7 +334,7 @@ test('unapproved users cannot claim or issue fan commands', async () => {
   const db = new MemoryDB();
   const { cookie } = await createAccount(db);
   const stub = { fetch: async () => Response.json({ error: 'Presenter approval is required.' }, { status: 403 }) };
-  const env = envWith(db, { FAN_COORDINATOR: { idFromName: () => 'one', get: () => stub } });
+  const env = envWith(db, { COORDINATOR_INTERNAL_TOKEN: TEST_INTERNAL_TOKEN, FAN_COORDINATOR: { idFromName: () => 'one', get: () => stub } });
   const claim = await claimControl({ request: request('/api/control/claim', { method: 'POST', cookie: cookieToken(cookie), body: {} }), env });
   const command = await commandControl({ request: request('/api/control/command', { method: 'POST', cookie: cookieToken(cookie), body: { speed: 100, leaseToken: '' } }), env });
   assert.equal(claim.status, 403);
@@ -327,7 +344,7 @@ test('unapproved users cannot claim or issue fan commands', async () => {
 test('presenter can reject a request, and presenter priority preempts a temporary lease', async () => {
   const db = new MemoryDB();
   const { data: user } = await createAccount(db);
-  const coordinator = new FanControlCoordinator(coordinatorCtx());
+  const coordinator = createCoordinator();
   const created = await coordinatorPost(coordinator, '/internal/request', { userId: user.user.id, fullName: user.user.fullName, email: user.user.email });
   const item = await created.json();
   const rejected = await coordinatorPost(coordinator, '/internal/presenter/decision', { presenterId: 'presenter', action: 'reject', requestId: item.id });
@@ -378,7 +395,7 @@ function attachMockSocket(coordinator, socket, metadata) {
 
 test('coordinator WebSocket connections are held only in instance memory', async () => {
   const ctx = coordinatorCtx();
-  const coordinator = new FanControlCoordinator(ctx);
+  const coordinator = createCoordinator(ctx);
   await coordinator.ready;
   const listeners = new Map();
   let acceptCount = 0;
@@ -393,7 +410,7 @@ test('coordinator WebSocket connections are held only in instance memory', async
   assert.equal(listeners.has('message'), true);
   assert.equal(listeners.has('close'), true);
 
-  const restartedCoordinator = new FanControlCoordinator(ctx);
+  const restartedCoordinator = createCoordinator(ctx);
   await restartedCoordinator.ready;
   assert.equal(restartedCoordinator.webSockets.size, 0);
   assert.equal(ctx.storage.values.size, 0);
@@ -401,8 +418,146 @@ test('coordinator WebSocket connections are held only in instance memory', async
 });
 
 async function coordinatorPost(coordinator, path, body, headers = {}) {
-  return coordinator.fetch(new Request(`https://do.test${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) }));
+  return coordinator.fetch(new Request(`https://do.test${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-coordinator-token': TEST_INTERNAL_TOKEN, ...headers }, body: JSON.stringify(body) }));
 }
+
+test('presenter approval atomically grants a temporary lease and duplicate approval is idempotent', async () => {
+  const ctx = coordinatorCtx();
+  const coordinator = createCoordinator(ctx);
+  const submitted = await coordinatorPost(coordinator, '/internal/request', {
+    userId: 'approved-user', fullName: 'Approved User', email: 'approved@example.com',
+  });
+  const requestItem = await submitted.json();
+
+  const firstApproval = await coordinatorPost(coordinator, '/internal/presenter/decision', {
+    presenterId: TEST_PRESENTER_ID, action: 'approve', requestId: requestItem.id,
+  });
+  const firstResult = await firstApproval.json();
+  const assignedLease = { ...coordinator.lease };
+  assert.equal(firstApproval.status, 200);
+  assert.equal(firstResult.request.status, 'approved');
+  assert.equal(coordinator.approvedUserId, 'approved-user');
+  assert.equal(assignedLease.userId, 'approved-user');
+  assert.equal(assignedLease.isPresenter, false);
+  assert.ok(assignedLease.token);
+  assert.equal('leaseToken' in firstResult, false);
+
+  const duplicateApproval = await coordinatorPost(coordinator, '/internal/presenter/decision', {
+    presenterId: TEST_PRESENTER_ID, action: 'approve', requestId: requestItem.id,
+  });
+  assert.equal(duplicateApproval.status, 200);
+  assert.equal(coordinator.lease.token, assignedLease.token);
+  assert.equal(coordinator.lease.expiresAt, assignedLease.expiresAt);
+  assert.equal(ctx.storage.calls.every((call) => call.operation === 'delete'), true);
+});
+
+test('concurrent approvals assign only one temporary controller', async () => {
+  const coordinator = createCoordinator();
+  const requests = [];
+  for (const [userId, fullName] of [['user-a', 'User A'], ['user-b', 'User B']]) {
+    const submitted = await coordinatorPost(coordinator, '/internal/request', {
+      userId, fullName, email: `${userId}@example.com`,
+    });
+    requests.push(await submitted.json());
+  }
+
+  const results = await Promise.all(requests.map((item) => coordinatorPost(coordinator, '/internal/presenter/decision', {
+    presenterId: TEST_PRESENTER_ID, action: 'approve', requestId: item.id,
+  })));
+  assert.deepEqual(results.map((result) => result.status).sort(), [200, 409]);
+  const approvedRequests = coordinator.requests.filter((item) => item.status === 'approved');
+  assert.equal(approvedRequests.length, 1);
+  assert.equal(coordinator.approvedUserId, coordinator.lease.userId);
+  assert.equal(approvedRequests[0].userId, coordinator.lease.userId);
+  assert.equal(coordinator.requests.filter((item) => item.status === 'pending').length, 1);
+});
+
+test('approved user receives the assigned lease only through their authenticated status request', async () => {
+  const db = new MemoryDB();
+  const user = await createAccount(db, 'approved@example.com');
+  const otherUser = await createAccount(db, 'other@example.com');
+  const presenter = await createAccount(db, 'presenter@example.com');
+  const coordinator = createCoordinator(coordinatorCtx(), presenter.data.user.id);
+  const env = envWith(db, {
+    PRESENTER_USER_ID: presenter.data.user.id,
+    COORDINATOR_INTERNAL_TOKEN: TEST_INTERNAL_TOKEN,
+    FAN_COORDINATOR: {
+      idFromName: () => 'one',
+      get: () => ({ fetch: (url, options) => coordinator.fetch(new Request(url, options)) }),
+    },
+  });
+
+  const userRequest = await requestControl({
+    request: request('/api/control/request', { method: 'POST', cookie: cookieToken(user.cookie), body: {} }),
+    env,
+  });
+  const otherRequest = await requestControl({
+    request: request('/api/control/request', { method: 'POST', cookie: cookieToken(otherUser.cookie), body: {} }),
+    env,
+  });
+  const userRequestItem = await userRequest.json();
+  assert.equal(otherRequest.status, 201);
+
+  const approval = await presenterDecision({
+    request: request('/api/presenter/decision', {
+      method: 'POST',
+      cookie: cookieToken(presenter.cookie),
+      body: { action: 'approve', requestId: userRequestItem.id },
+    }),
+    env,
+  });
+  assert.equal(approval.status, 200);
+
+  const userStatus = await controlRequestStatus({
+    request: request('/api/control/request', { cookie: cookieToken(user.cookie) }),
+    env,
+  });
+  const userStatusData = await userStatus.json();
+  assert.equal(userStatusData.status, 'approved');
+  assert.equal(userStatusData.leaseToken, coordinator.lease.token);
+  assert.ok(userStatusData.leaseExpiresAt > Date.now());
+
+  const otherStatus = await controlRequestStatus({
+    request: request('/api/control/request', { cookie: cookieToken(otherUser.cookie) }),
+    env,
+  });
+  const otherStatusData = await otherStatus.json();
+  assert.equal(otherStatusData.status, 'pending');
+  assert.equal('leaseToken' in otherStatusData, false);
+});
+
+test('coordinator rejects requests without the internal token', async () => {
+  const coordinator = createCoordinator();
+  const response = await coordinator.fetch(new Request('https://do.test/internal/status', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: '{}',
+  }));
+  assert.equal(response.status, 403);
+});
+
+test('coordinator rejects requests with an incorrect internal token', async () => {
+  const coordinator = createCoordinator();
+  const response = await coordinator.fetch(new Request('https://do.test/internal/status', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-coordinator-token': 'wrong-internal-secret',
+    },
+    body: '{}',
+  }));
+  assert.equal(response.status, 403);
+});
+
+test('spoofed presenter flag cannot grant presenter control', async () => {
+  const coordinator = createCoordinator();
+  const response = await coordinatorPost(coordinator, '/internal/claim', {
+    userId: 'ordinary-user',
+    isPresenter: true,
+    fullName: 'Fake Presenter',
+  });
+  assert.equal(response.status, 403);
+});
 
 test('presenter approval, single-controller lease, revocation, and reset preserve separate account data', async () => {
   const db = new MemoryDB();
@@ -410,7 +565,7 @@ test('presenter approval, single-controller lease, revocation, and reset preserv
   const ctx = coordinatorCtx();
   const bridgeMessages = [];
   const bridge = { send: (message) => bridgeMessages.push(JSON.parse(message)) };
-  const coordinator = new FanControlCoordinator(ctx);
+  const coordinator = createCoordinator(ctx);
   attachMockSocket(coordinator, bridge, { role: 'bridge', userId: 'presenter' });
   const created = await coordinatorPost(coordinator, '/internal/request', { userId: 'u1', fullName: 'User One', email: 'one@example.com' });
   const requestItem = await created.json();
@@ -452,12 +607,14 @@ test('bridge WebSocket is restricted to the same-origin presenter session', asyn
   let forwardedPath = '';
   const env = envWith(db, {
     PRESENTER_USER_ID: presenter.data.user.id,
+    COORDINATOR_INTERNAL_TOKEN: TEST_INTERNAL_TOKEN,
     FAN_COORDINATOR: {
       idFromName: () => 'one',
       get: () => ({
         fetch: async (incomingRequest) => {
           const forwardedUrl = new URL(incomingRequest.url);
           forwardedPath = forwardedUrl.pathname;
+          assert.equal(incomingRequest.headers.get('x-coordinator-token'), TEST_INTERNAL_TOKEN);
           assert.equal(forwardedUrl.searchParams.get('presenterUserId'), presenter.data.user.id);
           return new Response('bridged');
         },
@@ -485,7 +642,7 @@ test('presenter logout closes only the authenticated bridge connection', async (
     send() {},
   };
   const ctx = coordinatorCtx();
-  const coordinator = new FanControlCoordinator(ctx);
+  const coordinator = createCoordinator(ctx, 'presenter-id');
   attachMockSocket(coordinator, bridge, { role: 'bridge', userId: 'presenter-id' });
   const released = await coordinatorPost(coordinator, '/internal/bridge-release', { userId: 'other-id' });
   assert.equal(released.status, 200);
@@ -503,9 +660,10 @@ test('authenticated audience WebSockets are forwarded to the live-only coordinat
   const audience = await createAccount(db, 'audience@example.com');
   let forwardedPath = '';
   const env = envWith(db, {
+    COORDINATOR_INTERNAL_TOKEN: TEST_INTERNAL_TOKEN,
     FAN_COORDINATOR: {
       idFromName: () => 'one',
-      get: () => ({ fetch: async (incomingRequest) => { forwardedPath = new URL(incomingRequest.url).pathname; return new Response('live'); } }),
+      get: () => ({ fetch: async (incomingRequest) => { forwardedPath = new URL(incomingRequest.url).pathname; assert.equal(incomingRequest.headers.get('x-coordinator-token'), TEST_INTERNAL_TOKEN); return new Response('live'); } }),
     },
   });
   const liveRequest = new Request('https://project.test/api/live/socket', {
@@ -528,7 +686,7 @@ test('coordinator keeps temporary state in memory, purges legacy keys, and reset
     bridgeConnected: true,
   });
   ctx.storage.values.set('requests', [{ id: 'old-request', userId: account.data.user.id, status: 'pending', at: Date.now() }]);
-  const coordinator = new FanControlCoordinator(ctx);
+  const coordinator = createCoordinator(ctx);
   await coordinator.ready;
   assert.equal(ctx.storage.values.size, 0);
 
@@ -565,7 +723,7 @@ test('coordinator keeps temporary state in memory, purges legacy keys, and reset
   assert.equal(ctx.storage.values.size, 0);
   assert.equal(ctx.storage.calls.every((call) => call.operation === 'delete'), true);
 
-  const restartedCoordinator = new FanControlCoordinator(ctx);
+  const restartedCoordinator = createCoordinator(ctx);
   await restartedCoordinator.ready;
   assert.equal(restartedCoordinator.approvedUserId, null);
   assert.equal(restartedCoordinator.lease, null);
@@ -609,7 +767,7 @@ test('expired in-memory controller lease revokes approval and signals the bridge
   const signals = [];
   const bridge = { send: (message) => signals.push(JSON.parse(message)) };
   const ctx = coordinatorCtx();
-  const coordinator = new FanControlCoordinator(ctx);
+  const coordinator = createCoordinator(ctx);
   attachMockSocket(coordinator, bridge, { role: 'bridge' });
   coordinator.approvedUserId = 'user-1';
   coordinator.lease = { userId: 'user-1', fullName: 'Test User', token: 'lease-token', expiresAt: Date.now() - 1 };

@@ -4,12 +4,20 @@ export function coordinatorStub(env) {
 }
 
 export async function callCoordinator(env, path, payload = {}, headers = {}) {
+  if (!env.COORDINATOR_INTERNAL_TOKEN) {
+    throw new Error('Coordinator internal token is missing.');
+  }
+
+  const requestHeaders = new Headers(headers);
+  requestHeaders.set('content-type', 'application/json');
+  requestHeaders.set('x-coordinator-token', env.COORDINATOR_INTERNAL_TOKEN);
+
   const response = await coordinatorStub(env).fetch(`https://fan-coordinator.internal${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...headers },
+    headers: requestHeaders,
     body: JSON.stringify(payload),
   });
+
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) return { response, data };
   return { response, data };
 }

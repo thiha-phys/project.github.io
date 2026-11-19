@@ -65,8 +65,8 @@ function setConnectionState(state, message) {
     connectButton.disabled = state === 'checking';
     connectButton.innerHTML = 'Take control <span aria-hidden="true">↗</span>';
   } else if (requestStatus.status === 'approved') {
-    connectButton.disabled = state === 'checking';
-    connectButton.innerHTML = 'Claim approved control <span aria-hidden="true">↗</span>';
+    connectButton.disabled = true;
+    connectButton.textContent = 'Activating your control…';
   } else if (requestStatus.status === 'pending') {
     connectButton.disabled = true;
     connectButton.textContent = 'Request pending approval';
@@ -87,7 +87,7 @@ function updateControlAvailability() {
   autoButton.setAttribute('aria-pressed', String(!isManual));
   manualButton.setAttribute('aria-pressed', String(isManual));
   manualHint.textContent = !connected
-    ? requestStatus.status === 'pending' ? 'Your request is waiting for presenter approval.' : currentUser?.isPresenter ? 'Take control to operate the fan.' : requestStatus.status === 'approved' ? 'Your request is approved. Claim control to continue.' : 'Request control and wait for presenter approval.'
+    ? requestStatus.status === 'pending' ? 'Your request is waiting for presenter approval.' : currentUser?.isPresenter ? 'Take control to operate the fan.' : requestStatus.status === 'approved' ? 'Your request is approved. Your control lease is activating automatically.' : 'Request control and wait for presenter approval.'
     : isManual ? 'Manual mode is active. Set a speed or turn the fan off.' : 'Switch to Manual to adjust speed or turn the fan off.';
   document.getElementById('lockIcon').textContent = connected ? (isManual ? '↔' : '⌁') : connectionState === 'occupied' ? '●' : '⌑';
 }
@@ -121,9 +121,31 @@ function renderStatus(data) {
 async function refreshRequestStatus() {
   try {
     requestStatus = await apiRequest('/api/control/request');
-    const labels = { none: 'No control request yet.', pending: 'Your request is waiting for presenter approval.', approved: 'The presenter approved your request. You may claim the controls.', rejected: 'The presenter declined this request. You may submit a new request if needed.', revoked: 'Your temporary permission was revoked.', expired: 'Your temporary permission expired after the control connection ended.' };
+    const labels = { none: 'No control request yet.', pending: 'Your request is waiting for presenter approval.', approved: 'Approval received. Activating your control lease…', rejected: 'The presenter declined this request. You may submit a new request if needed.', revoked: 'Your temporary permission was revoked.', expired: 'Your temporary permission expired after the control connection ended.' };
+    const hasActiveLease = requestStatus.status === 'approved'
+      && typeof requestStatus.leaseToken === 'string'
+      && requestStatus.leaseToken
+      && Number.isFinite(requestStatus.leaseExpiresAt)
+      && requestStatus.leaseExpiresAt > Date.now();
+    if (hasActiveLease) {
+      requestStatusMessage.textContent = 'You are in control.';
+      activateLease(requestStatus.leaseToken);
+      return;
+    }
+
     requestStatusMessage.textContent = currentUser?.isPresenter ? 'Presenter access is active. You can approve a request or take back control.' : (labels[requestStatus.status] || 'Control request status is ready.');
-    if (requestStatus.status === 'expired' || requestStatus.status === 'revoked') { connected = false; leaseToken = ''; }
+    if (connected && !currentUser?.isPresenter) {
+      connected = false;
+      leaseToken = '';
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = undefined;
+      setConnectionState('error', labels[requestStatus.status] || 'Your control lease is no longer active.');
+      return;
+    }
+    if (requestStatus.status === 'approved' && !connected) {
+      setConnectionState('connecting', labels.approved);
+      return;
+    }
     if (!connected && connectionState !== 'connecting' && connectionState !== 'occupied') setConnectionState(connectionState, connectionMessage.textContent);
   } catch (error) {
     if (error.status === 401) location.replace(`/account.html?next=${encodeURIComponent(location.pathname + location.search)}`);
@@ -234,18 +256,40 @@ async function startControl() {
     if (!currentUser?.isPresenter && requestStatus.status !== 'approved') {
       requestStatus = await apiRequest('/api/control/request', { method: 'POST', body: {} });
       await refreshRequestStatus();
-      setConnectionState('available', 'Control request sent. Wait for the presenter to approve it.'); return;
+      if (!connected) setConnectionState('available', 'Control request sent. Wait for the presenter to approve it.');
+      return;
+    }
+    if (!currentUser?.isPresenter) {
+      if (requestStatus.leaseToken) activateLease(requestStatus.leaseToken);
+      else setConnectionState('connecting', 'Approval received. Activating your control lease…');
+      return;
     }
     const result = await apiRequest('/api/control/claim', { method: 'POST', body: {} });
-    leaseToken = result.leaseToken; connected = true;
-    setConnectionState('connected', 'Connected. You have temporary control of this fan.');
-    await refreshLiveStatus();
-    clearInterval(heartbeatTimer);
-    heartbeatTimer = setInterval(async () => {
-      try { await apiRequest('/api/control/heartbeat', { method: 'POST', body: { leaseToken } }); }
-      catch (error) { connected = false; leaseToken = ''; setConnectionState('error', error.message); }
-    }, 8_000);
+    activateLease(result.leaseToken);
   } catch (error) { connected = false; leaseToken = ''; setConnectionState(error.status === 423 ? 'occupied' : 'error', error.message); }
+}
+
+function activateLease(token) {
+  if (!token) return;
+  const alreadyActive = connected && leaseToken === token;
+  connected = true;
+  leaseToken = token;
+  setConnectionState('connected', 'You are in control.');
+  if (alreadyActive) return;
+  void refreshLiveStatus();
+  clearInterval(heartbeatTimer);
+  const sendHeartbeat = async () => {
+    try { await apiRequest('/api/control/heartbeat', { method: 'POST', body: { leaseToken } }); }
+    catch (error) {
+      connected = false;
+      leaseToken = '';
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = undefined;
+      setConnectionState('error', error.message);
+    }
+  };
+  heartbeatTimer = setInterval(sendHeartbeat, 8_000);
+  void sendHeartbeat();
 }
 
 async function sendCommand(command) {
@@ -254,7 +298,12 @@ async function sendCommand(command) {
     await apiRequest('/api/control/command', { method: 'POST', body: { leaseToken, ...command } });
     await refreshLiveStatus();
   } catch (error) {
-    if (error.status === 403) { connected = false; leaseToken = ''; }
+    if (error.status === 403) {
+      connected = false;
+      leaseToken = '';
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = undefined;
+    }
     setConnectionState('error', error.message);
   }
 }

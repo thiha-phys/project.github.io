@@ -6,22 +6,22 @@ This project contains Cloudflare Pages Functions for accounts and authorization,
 
 The Pages configuration and coordinator Worker configuration are deliberately separate:
 
-- The Pages project uses the root `wrangler.toml`; its current configured name is `mu-physics-project` and its build output is the repository root.
-- The standalone Worker uses `coordinator/wrangler.toml`; its `name` is `mu-physics-fan-coordinator`, and its entry point is `coordinator/worker.js`.
-- `FAN_COORDINATOR` is a **Durable Object binding**, not a Service Binding. Pages refers to script `mu-physics-fan-coordinator` and class `FanControlCoordinator`. Those names must match the coordinator Worker configuration and export exactly.
+- The production Pages project uses the root `wrangler.toml`; its configured name is `project` and its build output is the repository root.
+- Production uses `coordinator/wrangler.toml` (`mu-physics-fan-coordinator`) and the `coordinator/worker.js` entry point.
+- `FAN_COORDINATOR` is a **Durable Object binding**, not a Service Binding. The production binding refers to script `mu-physics-fan-coordinator` and class `FanControlCoordinator`. The names in the Pages and Worker configurations must match.
 - The coordinator migration `v1` registers the `FanControlCoordinator` Durable Object class. The Worker does not use Durable Object storage for seminar state. On instance startup, it deletes the legacy `state` and `requests` keys left by older versions, then keeps all new seminar state in memory. This does not create, delete, or migrate the account D1 database.
-- Pages also needs its existing D1 database bound as `DB`. The root `wrangler.toml` intentionally has `SET_AFTER_CREATING_D1` instead of a real database ID. Before using Wrangler for Pages deployment, replace it with the ID of the **intended existing** account database, or ensure the Pages dashboard binding targets that same database. Do not create or delete a production database for this Worker-binding fix.
-- Set `PRESENTER_USER_ID` as a server-side Pages variable to the trusted presenter's actual account ID. Do not put it in browser code.
-
-Before deploying, confirm the Cloudflare account you are logged into, the existing Pages project name, the existing D1 database name and ID, and the trusted presenter account ID. The script/class/binding names above are already defined by this repository; no resource IDs are supplied or assumed here.
+- The production Worker sets `CONTROL_HISTORY_RETENTION_DAYS` to 30. This only bounds in-memory history while an instance is alive; it does not persist control history.
+- Production D1 is `mu-physics-accounts`, bound as `DB` in the root `wrangler.toml`. Verify its configured ID against Cloudflare before deployment; never create or delete a database to fix a binding.
+- `PRESENTER_USER_ID` is configured as a server-side variable for Pages and the matching coordinator Worker. Do not put it in browser code.
+- The coordinator requires `COORDINATOR_INTERNAL_TOKEN` on both the Pages Functions and coordinator Worker sides. Configure the same secret value on both resources. Do not put this token in a Wrangler file, commit it, or send it in chat. Without it, coordinator requests fail closed.
 
 ### What a coordinator restart means
 
 Control requests, approvals/rejections, current controller and lease, telemetry, pending command acknowledgements, and WebSocket metadata exist only in the current coordinator instance. A restart/eviction clears them and closes the in-memory sockets. Users must submit new requests, the presenter must approve again, and the presenter must reconnect the bridge. No old permission is restored. The ESP32's local temperature-based Auto control and watchdog remain responsible for safe fan operation during Cloudflare or bridge loss.
 
-## Required deployment order
+## Production deployment order
 
-Do not publish Pages until the referenced Worker script exists. The reported `8000109: Script mu-physics-fan-coordinator not found` is caused by publishing Pages before deploying the separately configured coordinator Worker; the two script names in the repository already match.
+No deployment was performed for this cleanup. Do not publish the Pages configuration until Pages branch-preview deployments have been disabled in Cloudflare Dashboard. Removing the local Preview override does not itself disable Pages preview builds; verify the Dashboard setting so a preview deployment cannot accidentally use production bindings.
 
 1. From the repository root, authenticate Wrangler if needed:
 
@@ -29,30 +29,23 @@ Do not publish Pages until the referenced Worker script exists. The reported `80
    npx wrangler login
    ```
 
-2. Deploy the coordinator Worker first. This command targets the script named `mu-physics-fan-coordinator` in the currently selected Cloudflare account and applies its `v1` Durable Object migration:
+2. Verify that the production Worker `mu-physics-fan-coordinator` exists and exposes `FanControlCoordinator`. The Worker’s default HTTP handler intentionally returns 404; opening its root URL in a browser is not a health check. If the Worker code or configuration needs an update, deploy it first:
 
    ```sh
    npx wrangler deploy --config coordinator/wrangler.toml
    ```
 
-   Do not run this command until you have confirmed the intended Cloudflare account. The coordinator retains control-request history for 30 days by default; `CONTROL_HISTORY_RETENTION_DAYS` in `coordinator/wrangler.toml` can be set from 1 to 3650.
+   Before running it, confirm that Wrangler is authenticated to the intended Cloudflare account and that the production Worker binding and Durable Object migration are correct. Do not run migration or D1 commands as part of routine deployment.
 
-3. Verify in Cloudflare Dashboard → **Workers & Pages** that `mu-physics-fan-coordinator` has a successful active deployment. Confirm its Durable Object class is `FanControlCoordinator`. Do not continue if the script or class is missing. The Worker’s default HTTP handler intentionally returns 404; verify its deployment in the dashboard rather than treating a browser visit to its root URL as a health check.
+3. Confirm in Cloudflare Dashboard that Pages has the production `DB`, `FAN_COORDINATOR`, `PRESENTER_USER_ID`, and matching `COORDINATOR_INTERNAL_TOKEN` settings. Never put secrets in source code or terminal command arguments.
 
-4. In the Pages project settings, configure/check the bindings for each environment you intend to deploy:
-   - `FAN_COORDINATOR`: Durable Object class `FanControlCoordinator`, Worker script `mu-physics-fan-coordinator`.
-   - `DB`: the intended existing D1 account database.
-   - `PRESENTER_USER_ID`: the actual trusted presenter account ID as a server-side variable.
-
-   The root `wrangler.toml` already declares the `FAN_COORDINATOR` Durable Object binding. Its `script_name` must remain exactly equal to the coordinator Worker's `name`.
-
-5. Only after the Worker verification and Pages binding checks, deploy Pages. For a preview, replace `YOUR_PAGES_PROJECT` and `YOUR_PREVIEW_BRANCH` with the exact existing Pages project name and a branch that is **not** the production branch:
+4. Only after verifying the Worker and production settings, deploy Pages from the confirmed production branch:
 
    ```sh
-   npx wrangler pages deploy . --project-name YOUR_PAGES_PROJECT --branch YOUR_PREVIEW_BRANCH
+   npx wrangler pages deploy . --project-name project --branch YOUR_PRODUCTION_BRANCH
    ```
 
-   The root config currently names the Pages project `mu-physics-project`; use that only if it matches the project shown in your Cloudflare Dashboard. A production-branch deployment publishes Pages to production. Wrangler Pages preview branches still use the binding configured for that Pages environment; use a separate preview coordinator binding if you need to isolate preview control state from an active seminar.
+   Replace `YOUR_PRODUCTION_BRANCH` with the exact production branch shown in Pages settings. No deployment should be run until you intentionally approve it.
 
 This deployment error does not require an account migration. Do not apply D1 migrations as part of this fix unless you independently confirm the existing database schema needs them and have selected the correct database.
 
@@ -60,15 +53,15 @@ The WebSocket endpoint verifies the presenter's server-side account session. No 
 
 ## Local development and Electronic page access
 
-- Serve the site through Cloudflare Pages local development so Functions, D1, Durable Objects, and WebSockets are available. Opening `electronic.html` directly or using a static-only web server does not exercise its authenticated API routes.
-- Keep the root Pages configuration's D1 ID and the local/preview bindings pointed at a dedicated test database and coordinator. Never connect local testing to the account database used by a live seminar.
+- The automated test suite uses local/in-memory test data and does not require Cloudflare resources. The root Pages config points at the production account database; do not enable remote bindings for local development or run integration tests against production.
+- Opening `electronic.html` directly or using a static-only web server does not exercise its authenticated API routes. Real Cloudflare integration checks require an explicitly configured isolated environment; none is configured by this repository.
 - `/electronic.html` requires a valid account session. Without one, Pages sends the browser to `/account.html` with a return path; after login it returns to Electronic. The service worker leaves navigations and `/api/` requests to the network so it cannot serve a cached protected page or intercept the login redirect.
 - Logout removes the current session row before attempting temporary-control cleanup and expires the session cookie. If control cleanup is unavailable, the user remains signed out and the hardware lease expires safely.
 
 ## Accounts and data
 
 - Registration collects only full name, email, password, and confirmation. Email is normalized to lowercase; D1 enforces uniqueness. Confirmations and plain passwords are never stored.
-- Passwords use PBKDF2-HMAC-SHA-256 with a per-account random salt and 310,000 iterations. Session tokens are random, stored as SHA-256 hashes in D1, and sent only in Secure, HttpOnly, SameSite cookies. Sessions expire after 30 days; logout removes the active session and explicitly expires the matching cookie.
+- Passwords use PBKDF2-HMAC-SHA-256 with a per-account random salt and 100,000 iterations. Session tokens are random, stored as SHA-256 hashes in D1, and sent only in Secure, HttpOnly, SameSite cookies. Sessions expire after 30 days; logout removes the active session and explicitly expires the matching cookie.
 - Presenter access comes from the protected server-side `PRESENTER_USER_ID` setting, not a form field or client-side role.
 - D1 stores accounts and authentication sessions only. Control requests, approval/rejection history, controller permissions, lease state, telemetry, command acknowledgements, and WebSocket metadata are held only in coordinator memory. The coordinator uses ordinary in-memory WebSocket connections rather than Durable Object hibernation attachments. No temporary coordination or sensor data is written to D1, Durable Object storage, logs, or analytics. On restart, all temporary state is lost, old permissions cannot be claimed, and the audience display stays offline until the bridge reconnects and sends new telemetry. The presenter reset button clears temporary in-memory state and leaves accounts intact.
 - Do not delete the D1 database for seminar cleanup. Before destructive schema work, export a backup and verify that it is non-empty:
@@ -85,12 +78,12 @@ The WebSocket endpoint verifies the presenter's server-side account session. No 
   npx wrangler d1 execute mu-physics-accounts-restore --remote --command="SELECT COUNT(*) AS users FROM users;"
   ```
 
-  Verify the restored accounts and schema before intentionally switching the Pages `DB` binding and `database_id` to the recovery database. Keep both databases until the restored site is confirmed. Practice this process against a separate test database first. Keep backup files private because they contain account email addresses and password hashes. D1's undelete/time-travel features are additional recovery options, not a substitute for backups.
+  Verify the restored accounts and schema before intentionally switching the Pages `DB` binding and `database_id` to the recovery database. Keep both databases until the restored site is confirmed. Practice only in a separately approved isolated environment; this repository no longer configures a test database. Keep backup files private because they contain account email addresses and password hashes. D1's undelete/time-travel features are additional recovery options, not a substitute for backups.
 - Current Cloudflare D1 Free limits are 500 MB per database and 5 GB per account. A set of 70 ordinary account rows is tiny compared with these limits. D1 quotas are provider limits, not a fixed 4 GB device allocation. See Cloudflare's [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) and [D1 backup/restore documentation](https://developers.cloudflare.com/d1/reference/time-travel/).
 
 ## Required verification checklist
 
-The following cases must be run against a non-production Pages preview with a test D1 database before using the account/control flow with seminar participants:
+Run the local automated checks before deployment. They are not a substitute for real Cloudflare or hardware integration testing. Do not use Production for testing; any future integration test environment must be separately isolated and explicitly approved.
 
 1. New account registration.
 2. Password/confirmation mismatch.
@@ -108,12 +101,12 @@ The following cases must be run against a non-production Pages preview with a te
 14. Unapproved and unrelated users cannot issue commands.
 15. Temporary-state reset preserves the account rows.
 16. An expired controller lease returns control to the ESP32's local Auto behavior.
-17. Electronic-page login redirect and same-origin assets work in Pages local development and preview.
+17. Electronic-page login redirect and same-origin assets work in the supported local/runtime setup.
 18. No telemetry values are persisted; a restarted coordinator waits for the next bridge update.
 
 The checklist is a deployment gate, not a claim that these live Cloudflare scenarios have already been tested.
 
-Before any production seminar, also verify in a non-production environment:
+Before any production seminar, perform controlled integration checks without using the Production account database:
 
 - The presenter can pair from Google Chrome on macOS, and only the presenter account can open the bridge WebSocket.
 - ESP32 BLE telemetry reaches the website in real time; multiple audience browsers receive updates without needing BLE.
@@ -124,5 +117,5 @@ No production deployment is authorized by this guide.
 
 ## Verification status
 
-- Local automated checks: `npm test` covers account registration/login/session behavior, logout invalidation and cookie clearing, protected/Electronic page routing, presenter approval and revocation, unauthorized commands, audience WebSocket telemetry, no temporary-state persistence, restart reset, lease expiry, and account retention across seminar reset. `python3 -m unittest discover -s tests -p 'test_*.py' -v` checks the D1 schema, case-insensitive email uniqueness, and Pages/Worker binding-name and migration consistency. JavaScript syntax checks and `git diff --check` should also pass before preview.
-- Not verified here: Cloudflare Pages/D1/Durable Object deployment, real Google Chrome Web Bluetooth pairing, Arduino firmware compilation/flashing, the physical sensor/fan, or a 70-browser load test. These require the configured Cloudflare preview and the actual hardware; do not treat local mock tests as hardware or production approval.
+- Local automated checks: `npm test` covers account registration/login/session behavior, logout invalidation and cookie clearing, protected/Electronic page routing, presenter approval and revocation, unauthorized commands, audience WebSocket telemetry, no temporary-state persistence, restart reset, lease expiry, and account retention across seminar reset. `python3 -m unittest discover -s tests -p 'test_*.py' -v` checks the D1 schema, case-insensitive email uniqueness, and production Pages/Worker binding-name and migration consistency. JavaScript syntax checks and `git diff --check` should also pass before deployment.
+- Not verified here: Cloudflare Pages/D1/Durable Object deployment, real Google Chrome Web Bluetooth pairing, Arduino firmware compilation/flashing, the physical sensor/fan, or a 70-browser load test. These require Cloudflare access and the actual hardware; do not treat local mock tests as hardware or production approval.
