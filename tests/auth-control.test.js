@@ -109,6 +109,70 @@ test('successful registration creates an ordinary account and secure cookie', as
   assert.equal([...db.users.values()][0].password_hash.includes('Long-test-password-947!'), false);
 });
 
+test('registration accepts a six-character password', async () => {
+  const db = new MemoryDB();
+  const response = await register({ request: request('/api/auth/register', { method: 'POST', body: { fullName: 'Test User', email: 'six@example.com', password: 'abc123', confirmPassword: 'abc123' } }), env: envWith(db) });
+  assert.equal(response.status, 201);
+  assert.equal([...db.users.values()][0].password_hash.includes('abc123'), false);
+});
+
+test('registration rejects a password shorter than six characters', async () => {
+  const db = new MemoryDB();
+  const response = await register({ request: request('/api/auth/register', { method: 'POST', body: { fullName: 'Test User', email: 'short@example.com', password: 'abc12', confirmPassword: 'abc12' } }), env: envWith(db) });
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).error, 'Use a password of at least 6 characters and no more than 128 characters.');
+  assert.equal(db.users.size, 0);
+});
+
+test('registration form applies the six-character minimum in browser validation', () => {
+  const source = readFileSync(new URL('../account.html', import.meta.url), 'utf8');
+  const registrationForm = source.match(/<form id="registerForm"[\s\S]*?<\/form>/)?.[0];
+  assert.ok(registrationForm);
+  const passwordInputs = [...registrationForm.matchAll(/<input\b[^>]*name="(?:password|confirmPassword)"[^>]*>/g)].map(([input]) => input);
+  assert.equal(passwordInputs.length, 2);
+  for (const input of passwordInputs) assert.match(input, /minlength="6"/);
+  assert.match(source, /Use at least 6 characters\./);
+});
+
+test('member contact icons link to the supplied contacts without visible contact text', () => {
+  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const cards = [...source.matchAll(/<article class="member">([\s\S]*?)<\/article>/g)].map(([, card]) => card);
+  const contacts = [
+    { name: 'Mg Thiha Kyaw', local: '09258554839', email: 'thihakyawphys73@gmail.com' },
+    { name: 'Ma Nge Nge Phyo', local: '09265026150', email: 'ngengephyo32@gmail.com' },
+    { name: 'Ma Zar Zar Win', local: '09966601525', email: 'zarzarwin1992.zzw@gmail.com' },
+    { name: 'Ma Phyoe Nandar Myint', local: '09773702503', email: 'phyoenandarmyint.phys@gmail.com' },
+    { name: 'Ma Sandar Tun', local: '09455056409', email: 'dawsandartun8@gmail.com' },
+    { name: 'Ma Lu Lu San', local: '09457938557', email: 'noelarlulu61@gmail.com' },
+  ];
+
+  assert.equal(cards.length, contacts.length);
+  for (const contact of contacts) {
+    const card = cards.find((item) => item.includes(`<h3>${contact.name}</h3>`));
+    assert.ok(card, `missing member card for ${contact.name}`);
+    const contactGroup = card.match(/<div class="member-contact-links"[^>]*>([\s\S]*?)<\/div>/)?.[1];
+    assert.ok(contactGroup, `missing contact icons for ${contact.name}`);
+    const anchors = [...contactGroup.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)];
+    const internationalDigits = `95${contact.local.slice(1)}`;
+    const expected = [
+      [`viber://chat?number=%2B${internationalDigits}`, `Open Viber chat with ${contact.name}`],
+      [`tel:${contact.local}`, `Call ${contact.name}`],
+      [`mailto:${contact.email}`, `Email ${contact.name}`],
+    ];
+    assert.equal(anchors.length, 3);
+    for (let index = 0; index < expected.length; index += 1) {
+      const [attributes, icon] = anchors[index].slice(1);
+      assert.ok(attributes.includes(`href="${expected[index][0]}"`));
+      assert.ok(attributes.includes(`aria-label="${expected[index][1]}"`));
+      assert.match(icon, /^<svg\b[\s\S]*<\/svg>$/);
+      assert.equal(icon.replace(/<[^>]*>/g, '').trim(), '');
+    }
+    const visibleText = card.replace(/<[^>]*>/g, ' ');
+    assert.equal(visibleText.includes(contact.local), false);
+    assert.equal(visibleText.includes(contact.email), false);
+  }
+});
+
 test('password and confirmation mismatch is rejected without creating a user', async () => {
   const db = new MemoryDB();
   const response = await register({ request: request('/api/auth/register', { method: 'POST', body: { fullName: 'Test User', email: 'x@example.com', password: 'Long-test-password-947!', confirmPassword: 'Different-password-123!' } }), env: envWith(db) });

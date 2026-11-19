@@ -17,6 +17,16 @@
 @media(max-width:390px){.header-link{display:none}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
+.member{position:relative}
+.member-contact-links{position:absolute;right:12px;bottom:8px;display:flex;align-items:center;gap:4px}
+.member-contact-links a{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;transition:background .2s,color .2s}
+.member-contact-links a:nth-child(1){color:#7360f2}
+.member-contact-links a:nth-child(2){color:#4f8d69}
+.member-contact-links a:nth-child(3){color:#a38752}
+.member-contact-links a:hover,.member-contact-links a:focus-visible{background:#e7ecdf}
+.member-contact-links a:focus-visible{outline:2px solid #a38752;outline-offset:2px}
+.member-contact-links svg{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
 .member{min-height:122px;display:flex;align-items:center;gap:17px;padding:13px 18px;background:#fffefa;border:1px solid #e8e9e1;border-radius:13px;transition:transform .2s,border-color .2s,box-shadow .2s}.member:hover{transform:translateY(-3px);border-color:#d6c79f;box-shadow:0 14px 30px rgba(24,48,35,.06)}.member-portrait{position:relative;flex:none;width:82px;height:94px;overflow:hidden;border-radius:10px;background:linear-gradient(145deg,#dfe7d7,#bac9b4);display:grid;place-items:center;color:#61745d;font-family:"Playfair Display",serif;font-size:30px}.member-portrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 35%;z-index:1}.member-info{min-width:0}.member-info h3{font-size:15px;line-height:1.4;margin:0 0 10px;font-weight:650;overflow-wrap:anywhere}.student-id{display:inline-block;padding:5px 10px;border-radius:999px;background:#b6373c;color:white;font-size:10px;font-weight:800;letter-spacing:.03em;white-space:nowrap;box-shadow:0 3px 8px rgba(182,55,60,.18)}
 @media(max-width:580px){.members{grid-template-columns:1fr;gap:11px}.member{min-height:118px;padding:12px 15px;gap:15px}.member-portrait{width:88px;height:96px}.member-info h3{font-size:14px;margin-bottom:9px}.student-id{font-size:10px}}
 

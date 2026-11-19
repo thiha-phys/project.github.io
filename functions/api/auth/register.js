@@ -12,7 +12,7 @@ export async function onRequestPost({ request, env }) {
   const confirmPassword = typeof body.confirmPassword === 'string' ? body.confirmPassword : '';
   if (fullName.length < 2 || fullName.length > 120) return json({ error: 'Enter your full name (2–120 characters).' }, 400);
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Enter a valid email address.' }, 400);
-  if (password.length < 12 || password.length > 128) return json({ error: 'Use a password between 12 and 128 characters.' }, 400);
+  if (password.length < 6 || password.length > 128) return json({ error: 'Use a password of at least 6 characters and no more than 128 characters.' }, 400);
   if (password !== confirmPassword) return json({ error: 'The passwords do not match.' }, 400);
   const id = crypto.randomUUID();
   const passwordHash = await hashPassword(password);
