@@ -87,7 +87,7 @@ function updateControlAvailability() {
   autoButton.setAttribute('aria-pressed', String(!isManual));
   manualButton.setAttribute('aria-pressed', String(isManual));
   manualHint.textContent = !connected
-    ? requestStatus.status === 'pending' ? 'Your request is waiting for presenter approval.' : currentUser?.isPresenter ? 'Take control to operate the fan.' : requestStatus.status === 'approved' ? 'Your request is approved. Your control lease is activating automatically.' : 'Request control and wait for presenter approval.'
+    ? requestStatus.status === 'pending' ? 'Your request is waiting for admin approval.' : currentUser?.isPresenter ? 'Take control to operate the fan.' : requestStatus.status === 'approved' ? 'Your request is approved. Your control lease is activating automatically.' : 'Request control and wait for admin approval.'
     : isManual ? 'Manual mode is active. Set a speed or turn the fan off.' : 'Switch to Manual to adjust speed or turn the fan off.';
   document.getElementById('lockIcon').textContent = connected ? (isManual ? '↔' : '⌁') : connectionState === 'occupied' ? '●' : '⌑';
 }
@@ -121,7 +121,7 @@ function renderStatus(data) {
 async function refreshRequestStatus() {
   try {
     requestStatus = await apiRequest('/api/control/request');
-    const labels = { none: 'No control request yet.', pending: 'Your request is waiting for presenter approval.', approved: 'Approval received. Activating your control lease…', rejected: 'The presenter declined this request. You may submit a new request if needed.', revoked: 'Your temporary permission was revoked.', expired: 'Your temporary permission expired after the control connection ended.' };
+    const labels = { none: 'No control request yet.', pending: 'Your request is waiting for admin approval.', approved: 'Approval received. Activating your control lease…', rejected: 'The admin declined this request. You may submit a new request if needed.', revoked: 'Your temporary permission was revoked.', expired: 'Your temporary permission expired after the control connection ended.' };
     const hasActiveLease = requestStatus.status === 'approved'
       && typeof requestStatus.leaseToken === 'string'
       && requestStatus.leaseToken
@@ -133,7 +133,7 @@ async function refreshRequestStatus() {
       return;
     }
 
-    requestStatusMessage.textContent = currentUser?.isPresenter ? 'Presenter access is active. You can approve a request or take back control.' : (labels[requestStatus.status] || 'Control request status is ready.');
+    requestStatusMessage.textContent = currentUser?.isPresenter ? 'Admin access is active. You can approve a request or take back control.' : (labels[requestStatus.status] || 'Control request status is ready.');
     if (connected && !currentUser?.isPresenter) {
       connected = false;
       leaseToken = '';
@@ -251,12 +251,12 @@ async function startControl() {
       : 'Control released.');
     return;
   }
-  setConnectionState('connecting', currentUser?.isPresenter ? 'Taking presenter control…' : 'Checking presenter approval…');
+  setConnectionState('connecting', currentUser?.isPresenter ? 'Taking admin control…' : 'Checking admin approval…');
   try {
     if (!currentUser?.isPresenter && requestStatus.status !== 'approved') {
       requestStatus = await apiRequest('/api/control/request', { method: 'POST', body: {} });
       await refreshRequestStatus();
-      if (!connected) setConnectionState('available', 'Control request sent. Wait for the presenter to approve it.');
+      if (!connected) setConnectionState('available', 'Control request sent. Wait for the admin to approve it.');
       return;
     }
     if (!currentUser?.isPresenter) {
